@@ -12,24 +12,33 @@ train_data["phase"] = train_data["phase"] * train_data["monthly"]
 
 
 # %%
-prediction_keys_map = train_data.groupby(['country','brand','dayweek'],as_index = False).phase.mean().rename(columns = {'phase':'prediction'})
+prediction_keys_map = (
+    train_data.groupby(["country", "brand", "dayweek"], as_index=False)
+    .phase.mean()
+    .rename(columns={"phase": "prediction"})
+)
 
 #%%
-def get_dummy_prediction(df,prediction_keys_map):
+def get_dummy_prediction(df, prediction_keys_map):
     df = add_date_cols(df)
 
-    #add predictions to dataset
-    df = df.merge(prediction_keys_map,on = ['country','brand','dayweek'],how = 'left')
+    # add predictions to dataset
+    df = df.merge(prediction_keys_map, on=["country", "brand", "dayweek"], how="left")
     print(df.prediction.isna().sum())
-    assert(df.prediction.isna().sum()==0)
-    
-    #Calcular los factores de normalizacion
-    df_norm_factor = df.groupby(["year", "month", "brand", "country"],as_index = False).prediction.sum().rename(columns = {'prediction':'norm_factor'})
-    df = df.merge(df_norm_factor,on = ["year", "month", "brand", "country"])
-    
-    #normalize
-    df['prediction']/=df['norm_factor']
+    assert df.prediction.isna().sum() == 0
+
+    # Calcular los factores de normalizacion
+    df_norm_factor = (
+        df.groupby(["year", "month", "brand", "country"], as_index=False)
+        .prediction.sum()
+        .rename(columns={"prediction": "norm_factor"})
+    )
+    df = df.merge(df_norm_factor, on=["year", "month", "brand", "country"])
+
+    # normalize
+    df["prediction"] /= df["norm_factor"]
     return df
+
 
 #%%
 
@@ -44,7 +53,9 @@ print("Performance train:", metric(train_data_with_prediction))
 submission_data = pd.read_parquet("data/submission_data.parquet")
 submission = pd.read_csv("data/submission_template.csv")
 # %%
-submission_data_with_prediction = get_dummy_prediction(submission_data, prediction_keys_map)[submission.keys()]
+submission_data_with_prediction = get_dummy_prediction(
+    submission_data, prediction_keys_map
+)[submission.keys()]
 
 #%%
 check_assert_sum_1(submission_data_with_prediction)

@@ -1,6 +1,17 @@
 import pandas as pd
 import numpy as np
-from pathlib import Path
+
+
+def scale_prediction(df):
+    """
+    Scale predictions by year-month-brand-country sum
+    """
+    df["sum_pred"] = df.groupby(["year", "month", "brand", "country"])[
+        "prediction"
+    ].transform(sum)
+    df["prediction"] = df["prediction"] / df["sum_pred"]
+    return df
+
 
 def add_date_cols(df):
     df["date"] = pd.to_datetime(df["date"])
@@ -10,6 +21,7 @@ def add_date_cols(df):
     df["month"] = df["date"].dt.month
     df["quarter"] = df["date"].dt.quarter
     return df
+
 
 def check_assert_sum_1(df):
     df = add_date_cols(df)
@@ -21,7 +33,8 @@ def check_assert_sum_1(df):
     assert np.isclose(
         df["sum_pred"], 1.0, rtol=1e-04
     ).all(), "Condition phasing year-month-brand-country must sum 1 is not fulfilled"
-    
+
+
 def metric(df: pd.DataFrame) -> float:
     """Compute performance metric.
 
