@@ -68,16 +68,19 @@ X_subm = scale_prediction(X_subm)
 
 # %%
 # Prepare file
-submission = pd.read_csv("data/submission_template.csv")
-submission = add_date_cols(submission)
-
-# Merge submission template with predictions
-submission.merge(
-    X_subm[["country", "brand", "month", "prediction"]],
-    on=["country", "brand", "month"],
-    how="left",
+submission = pd.read_csv("data/submission_template.csv").drop(["prediction"], axis=1)
+submission = add_date_cols(submission)  ## TODO does this work?
+# %%
+# Merge submission template with predictions on "country", "brand", "date"
+submission = submission.merge(
+    X_subm[["country", "brand", "date", "prediction"]], on=["country", "brand", "date"]
 )
 submission = submission[["country", "brand", "date", "prediction"]]
+# %%
+# Check if submission has missing values
+print(submission.shape)
+submission.isna().sum()
+
 # %%
 # Save Submission
 sub_number = 1
