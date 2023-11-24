@@ -5,7 +5,7 @@ from sklearn.model_selection import train_test_split
 
 # %%
 # Read parquet file
-train_data = pd.read_parquet("data/train_data.parquet").query('date>"01-01-2020"')
+train_data = pd.read_parquet("data/train_data.parquet").query('date>"01-01-2019"')
 # %%
 ## Transform Phase based on monthly sales
 train_data["phase"] = train_data["phase"] * train_data["monthly"]
@@ -74,7 +74,7 @@ submission_data_with_prediction = get_dummy_prediction(
 check_assert_sum_1(submission_data_with_prediction)
 # %%
 # Save Submission
-sub_number = 4
+sub_number = 5
 sub_name = "submission/submission{}.csv".format(sub_number)
 submission_data_with_prediction.to_csv(sub_name, index=False)
 

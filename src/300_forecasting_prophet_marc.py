@@ -101,12 +101,13 @@ from sklearn.model_selection import cross_val_score
 score = cross_val_score(estimator, X, y, cv=3)
 
 # %%
-from helper.helper import metric
+from helper.helper import metric, scale_prediction
 
 estimator.fit(X, y)
 y_pred = estimator.predict(X)
 # %%
 train_data["prediction"] = y_pred
+train_data = scale_prediction(train_data)
 metric(train_data)
 # %%
 X_subm = transform_data(submission_data, categorical_feat)

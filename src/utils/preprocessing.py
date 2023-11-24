@@ -51,3 +51,18 @@ def calculate_time_features(df, time_column):
     df.drop(columns=[f"dayweek"], inplace=True)
 
     return df
+
+
+def add_basic_lag_features(df, n_lags_day, n_lags_month, n_lags_yr):
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.set_index("date")
+    for i in range(1, n_lags_day + 1):
+        df[f"lag_phase_{i}_days"] = df.phase.shift(i, freq="D")
+
+    for i in range(1, n_lags_month + 1):
+        df[f"lag_phase_{i}_month"] = df.phase.shift(30 * i, freq="D")
+
+    for i in range(1, n_lags_yr + 1):
+        df[f"lag_phase_{i}_yr"] = df.phase.shift(365 * i, freq="D")
+
+    return df.reset_index()

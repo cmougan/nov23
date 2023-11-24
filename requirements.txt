@@ -11,3 +11,5 @@ category_encoders
 xgboost
 sklego
 scipy
+tqdm
+
