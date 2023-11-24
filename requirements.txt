@@ -9,3 +9,4 @@ ipykernel
 scipy
 category_encoders
 xgboost
+tqdm

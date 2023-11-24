@@ -57,12 +57,12 @@ def add_basic_lag_features(df, n_lags_day, n_lags_month, n_lags_yr):
     df["date"] = pd.to_datetime(df["date"])
     df = df.set_index("date")
     for i in range(1, n_lags_day + 1):
-        df[f"lag_phase_{i}_days"] = df.phase.shift(freq=f"{i}D")
+        df[f"lag_phase_{i}_days"] = df.phase.shift(i, freq="D")
 
-    for i in range(n_lags_month):
-        df[f"lag_phase_{i}_month"] = df.phase.shift(freq=f"{i}M")
+    for i in range(1, n_lags_month + 1):
+        df[f"lag_phase_{i}_month"] = df.phase.shift(30 * i, freq="D")
 
-    for i in range(n_lags_yr):
-        df[f"lag_phase_{i}_yr"] = df.phase.shift(freq=f"{i}Y")
+    for i in range(1, n_lags_yr + 1):
+        df[f"lag_phase_{i}_yr"] = df.phase.shift(365 * i, freq="D")
 
-    return df
+    return df.reset_index()
