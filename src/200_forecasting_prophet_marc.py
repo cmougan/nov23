@@ -35,25 +35,85 @@ print(f'Unique tuples in submission: {submission_data["code"].nunique()}')
 # %%
 
 from lightgbm import LGBMRegressor
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
+from sklearn.preprocessing import LabelEncoder
+from sklearn.impute import KNNImputer
+import numpy as np
+from helper.helper import add_date_cols
 
-estimator = LGBMRegressor()
+
+# %%
+categorical_feat = [
+    "year",
+    "quarter",
+    "month",
+    "ther_area",
+    "main_channel",
+    "brand",
+    "country",
+]
+
+
+def transform_data(data, categorical_feat):
+    data = add_date_cols(data)
+    X = data.drop(columns=["code", "phase", "date", "monthly"])
+    X[categorical_feat] = X[categorical_feat].astype("category")
+    return X
+
+
+y = train_data["phase"]
+X = transform_data(train_data, categorical_feat)
+# %%
+
+
+# for cat in categorical_feat:
+# isna = X.isna().iloc[:,0]
+# le = LabelEncoder()
+# X[cat] = le.fit_transform(X[cat])
+# X[cat][isna] = np.nan
+
+# %%
+
+# %%
+estimator = LGBMRegressor(categorical_feature=categorical_feat)
 cv = GridSearchCV(
     estimator,
     {
         "n_estimators": [50, 100, 200, 500],
         "learning_rate": [0.01, 0.001, 0.1],
         "max_depth": [1, 2, 3, 5],
+        "num_iterations": [1000],
     },
-    cv=5,
+    cv=3,
 )
-X = train_data.drop(columns=["code", "phase"])
-y = train_data["phase"]
+cv_random = RandomizedSearchCV(
+    estimator,
+    param_distributions={
+        "n_estimators": [50, 100, 200, 500],
+        "learning_rate": [0.01, 0.001, 0.1],
+        "max_depth": [1, 2, 3, 5],
+        "num_iterations": [1000],
+    },
+)
+# %%
+from sklearn.model_selection import cross_val_score
 
-cv.fit(X, y)
-print(cv.best_score(), cv.best_params_)
+score = cross_val_score(estimator, X, y, cv=3)
 
+# %%
+from helper.helper import metric
 
+estimator.fit(X, y)
+y_pred = estimator.predict(X)
+# %%
+train_data["prediction"] = y_pred
+metric(train_data)
+# %%
+X_subm = transform_data(submission_data, categorical_feat)
+y_pred_sum = estimator.predict(X)
+# %%
+cv_random.fit(X, y)
+print(cv.best_score_, cv.best_params_)
 # %%
 
 

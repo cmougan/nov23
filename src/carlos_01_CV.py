@@ -2,7 +2,9 @@
 import pandas as pd
 from helper.helper import metric, add_date_cols, scale_prediction, check_assert_sum_1
 from utils.validation import train_test_split_temporal
+import warnings
 
+warnings.filterwarnings("ignore")
 # %%
 # Read files
 train_data = pd.read_parquet("data/train_data.parquet")
@@ -35,12 +37,36 @@ X_tr, X_te, y_tr, y_te = train_test_split_temporal(
 
 # %%
 # Model
+from sklearn.pipeline import Pipeline
+from category_encoders import OneHotEncoder, TargetEncoder
+from sklearn.linear_model import Lasso, LinearRegression
+from sklearn.preprocessing import StandardScaler
+from utils.transformer import DropCols, GetNumerical
+from sklearn.impute import SimpleImputer
 from sklearn.dummy import DummyRegressor
+from xgboost import XGBRegressor
 
-model = DummyRegressor(strategy="mean")
+model = Pipeline(
+    [
+        ("drop_cols", DropCols(cols=["date", "train", "year", "sum_pred", "phase"])),
+        ("ohe", TargetEncoder(cols=["country", "brand", "month"])),
+        ("get_numerical", GetNumerical()),  # TODO: Remove this
+        ("imputer", SimpleImputer(strategy="mean")),
+        ("scaler", StandardScaler()),
+        # ("model", XGBRegressor(max_depth=5, n_estimators=20, n_jobs=-1)),
+        ("model", Lasso()),
+    ]
+)
+
 model.fit(X_tr, y_tr)
-
-
+# %%
+# Is the model learning?
+# If linear regression, we can check the coefficients
+if isinstance(model.named_steps["model"], LinearRegression):
+    print(model.named_steps["model"].coef_)
+# If tree based, we can check the feature importance
+else:
+    print(model.named_steps["model"].feature_importances_)
 # %%
 # Check performance
 ## Train
@@ -84,6 +110,6 @@ submission.isna().sum()
 
 # %%
 # Save Submission
-sub_number = 3
+sub_number = "xgb_01"
 sub_name = "submissions/submission{}.csv".format(sub_number)
 submission.to_csv(sub_name, index=False)
