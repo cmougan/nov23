@@ -4,3 +4,4 @@ pyarrow
 fastparquet
 scikit-learn
 seaborn
+lightgbm
