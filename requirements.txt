@@ -5,3 +5,5 @@ fastparquet
 scikit-learn
 seaborn
 lightgbm
+ipykernel
+scipy
