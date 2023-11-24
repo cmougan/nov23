@@ -44,6 +44,7 @@ from sklearn.preprocessing import StandardScaler
 from utils.transformer import DropCols, GetNumerical
 from sklearn.impute import SimpleImputer
 from sklearn.dummy import DummyRegressor
+from xgboost import XGBRegressor
 
 model = Pipeline(
     [
@@ -52,14 +53,20 @@ model = Pipeline(
         ("get_numerical", GetNumerical()),  # TODO: Remove this
         ("imputer", SimpleImputer(strategy="mean")),
         ("scaler", StandardScaler()),
-        ("model", Lasso(alpha=0.1)),
+        # ("model", XGBRegressor(max_depth=5, n_estimators=20, n_jobs=-1)),
+        ("model", Lasso()),
     ]
 )
 
 model.fit(X_tr, y_tr)
 # %%
 # Is the model learning?
-model.named_steps["model"].coef_
+# If linear regression, we can check the coefficients
+if isinstance(model.named_steps["model"], LinearRegression):
+    print(model.named_steps["model"].coef_)
+# If tree based, we can check the feature importance
+else:
+    print(model.named_steps["model"].feature_importances_)
 # %%
 # Check performance
 ## Train
@@ -103,6 +110,6 @@ submission.isna().sum()
 
 # %%
 # Save Submission
-sub_number = 3
+sub_number = "xgb_01"
 sub_name = "submissions/submission{}.csv".format(sub_number)
 submission.to_csv(sub_name, index=False)
