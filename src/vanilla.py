@@ -5,12 +5,12 @@ from sklearn.model_selection import train_test_split
 
 # %%
 # Read files
-train_data = pd.read_parquet("data/train_data.parquet")
+train_data = pd.read_parquet("../data/train_data.parquet")
 ## Transform phase based on monthly sales
 train_data["phase"] = train_data["phase"] * train_data["monthly"]
 
 # Load submission data
-submission_data = pd.read_parquet("data/submission_data.parquet")
+submission_data = pd.read_parquet("../data/submission_data.parquet")
 ## Merge train and submission data
 # TODO: Discuss if we want to follow this engineering approach
 train_data["train"] = 1
@@ -68,7 +68,7 @@ X_subm = scale_prediction(X_subm)
 
 # %%
 # Prepare file
-submission = pd.read_csv("data/submission_template.csv").drop(["prediction"], axis=1)
+submission = pd.read_csv("../data/submission_template.csv").drop(["prediction"], axis=1)
 submission = add_date_cols(submission)  ## TODO does this work?
 # %%
 # Merge submission template with predictions on "country", "brand", "date"
@@ -83,6 +83,6 @@ submission.isna().sum()
 
 # %%
 # Save Submission
-sub_number = 1
-sub_name = "submissions/submission{}.csv".format(sub_number)
+sub_number = 3
+sub_name = "../submissions/submission{}.csv".format(sub_number)
 submission.to_csv(sub_name, index=False)

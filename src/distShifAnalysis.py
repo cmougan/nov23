@@ -8,12 +8,12 @@ import matplotlib.pyplot as plt
 
 # %%
 # Read files
-train_data = pd.read_parquet("data/train_data.parquet")
+train_data = pd.read_parquet("../data/train_data.parquet")
 ## Transform phase based on monthly sales
 train_data["phase"] = train_data["phase"] * train_data["monthly"]
 
 # Load submission data
-submission_data = pd.read_parquet("data/submission_data.parquet")
+submission_data = pd.read_parquet("../data/submission_data.parquet")
 # %%
 ## Get numeric data
 train_data_numeric = train_data.select_dtypes(include=["float64", "int64"])
