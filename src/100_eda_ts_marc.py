@@ -65,7 +65,23 @@ for year,yr_phase in evolution_phase_per_year.groupby('year'):
     plt.scatter(yr_phase.wd,yr_phase.phase,c = [year_to_col[year]]*len(yr_phase),label = year)
 
 plt.legend()    
+plt.legend(bbox_to_anchor = (1.01,1))    
 plt.show()
 
 print (f'days in submission: {submission_data["wd"].describe()}')
+
+
+#%%
+from helper.helper import add_date_cols
+from matplotlib import cm
+train_data = add_date_cols(train_data)
+yrs = train_data['month'].unique()
+colors = cm.get_cmap('viridis',len(yrs))
+year_to_col = {y:colors(y-min(yrs)) for y in yrs}
+evolution_phase_per_year = train_data.groupby(['month','wd'],as_index = False).phase.mean()
+for year,yr_phase in evolution_phase_per_year.groupby('month'):
+    plt.scatter(yr_phase.wd,yr_phase.phase,c = [year_to_col[year]]*len(yr_phase),label = year)
+
+plt.legend(bbox_to_anchor = (1.01,1))    
+plt.show()
 
