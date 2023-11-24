@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from src.utils.preprocessing import add_date_cols
 
 
 def scale_prediction(df):
