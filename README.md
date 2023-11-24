@@ -5,6 +5,7 @@
 ## Feature Engineering
  - Models with very few features
  - Is it possible to select different features based on combinations of brand/country?
+ - Most Robust Imputers
 
 ## Modeling 
  - A model per brand/country
