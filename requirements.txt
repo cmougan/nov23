@@ -5,3 +5,7 @@ fastparquet
 scikit-learn
 seaborn
 lightgbm
+ipykernel
+scipy
+category_encoders
+xgboost

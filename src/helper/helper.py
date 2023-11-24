@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from src.utils.preprocessing import add_date_cols
 
 
 def scale_prediction(df):
@@ -10,16 +11,6 @@ def scale_prediction(df):
         "prediction"
     ].transform(sum)
     df["prediction"] = df["prediction"] / df["sum_pred"]
-    return df
-
-
-def add_date_cols(df):
-    df["date"] = pd.to_datetime(df["date"])
-
-    # create datetime columns
-    df["year"] = df["date"].dt.year
-    df["month"] = df["date"].dt.month
-    df["quarter"] = df["date"].dt.quarter
     return df
 
 
