@@ -9,3 +9,5 @@ ipykernel
 scipy
 category_encoders
 xgboost
+sklego
+scipy
