@@ -7,6 +7,7 @@ def scale_prediction(df):
     """
     Scale predictions by year-month-brand-country sum
     """
+    df = df.copy()
     df["sum_pred"] = df.groupby(["year", "month", "brand", "country"])[
         "prediction"
     ].transform(sum)

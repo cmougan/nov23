@@ -53,8 +53,8 @@ model = Pipeline(
         ("get_numerical", GetNumerical()),  # TODO: Remove this
         ("imputer", SimpleImputer(strategy="mean")),
         ("scaler", StandardScaler()),
-        # ("model", XGBRegressor(max_depth=5, n_estimators=20, n_jobs=-1)),
-        ("model", Lasso()),
+        ("model", XGBRegressor(max_depth=5, n_estimators=20, n_jobs=-1)),
+        # ("model", Lasso()),
     ]
 )
 
@@ -62,7 +62,7 @@ model.fit(X_tr, y_tr)
 # %%
 # Is the model learning?
 # If linear regression, we can check the coefficients
-if isinstance(model.named_steps["model"], LinearRegression):
+if isinstance(model.named_steps["model"], Lasso):
     print(model.named_steps["model"].coef_)
 # If tree based, we can check the feature importance
 else:
@@ -107,9 +107,13 @@ submission = submission[["country", "brand", "date", "prediction"]]
 # Check if submission has missing values
 print(submission.shape)
 submission.isna().sum()
-
+# %%
+# Are there negative values?
+submission[submission.prediction < 0]
 # %%
 # Save Submission
 sub_number = "xgb_01"
 sub_name = "submissions/submission{}.csv".format(sub_number)
 submission.to_csv(sub_name, index=False)
+
+# %%
