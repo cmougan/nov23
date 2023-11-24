@@ -2,7 +2,7 @@
 """
 
 """
-
+# %%
 import pandas as pd
 import seaborn as sns
 import matplotlib.pylab as plt
@@ -119,3 +119,5 @@ for year, yr_phase in evolution_phase_per_year.groupby("quarter"):
 
 plt.legend(bbox_to_anchor=(1.01, 1))
 plt.show()
+
+# %%
