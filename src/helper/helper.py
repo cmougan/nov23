@@ -13,16 +13,6 @@ def scale_prediction(df):
     return df
 
 
-def add_date_cols(df):
-    df["date"] = pd.to_datetime(df["date"])
-
-    # create datetime columns
-    df["year"] = df["date"].dt.year
-    df["month"] = df["date"].dt.month
-    df["quarter"] = df["date"].dt.quarter
-    return df
-
-
 def check_assert_sum_1(df):
     df = add_date_cols(df)
 
