@@ -28,11 +28,15 @@ total_data_with_lags = (
     )
 ).reset_index()
 # %%
-lags_features = [k for k in train_data_with_lags.keys() if "lag_" in k]
+lags_features = [k for k in total_data_with_lags.keys() if "lag_" in k]
 # fillna?
 # %%
-lags_feature.query('date<"01-01-2022"').to_csv("200_feateng_train_data.csv")
-lags_feature.query('date>="01-01-2022"').to_csv("200_feateng_test_data.csv")
+total_data_with_lags.query('date<"01-01-2022"').to_parquet(
+    "data/200_feateng_train_data.parquet"
+)
+total_data_with_lags.query('date>="01-01-2022"').to_parquet(
+    "data/200_feateng_test_data.parquet"
+)
 
 
 # %%
