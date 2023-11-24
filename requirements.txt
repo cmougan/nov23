@@ -7,3 +7,4 @@ seaborn
 lightgbm
 ipykernel
 scipy
+category_encoders

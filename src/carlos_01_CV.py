@@ -2,7 +2,9 @@
 import pandas as pd
 from helper.helper import metric, add_date_cols, scale_prediction, check_assert_sum_1
 from utils.validation import train_test_split_temporal
+import warnings
 
+warnings.filterwarnings("ignore")
 # %%
 # Read files
 train_data = pd.read_parquet("data/train_data.parquet")
@@ -35,12 +37,29 @@ X_tr, X_te, y_tr, y_te = train_test_split_temporal(
 
 # %%
 # Model
+from sklearn.pipeline import Pipeline
+from category_encoders import OneHotEncoder, TargetEncoder
+from sklearn.linear_model import Lasso, LinearRegression
+from sklearn.preprocessing import StandardScaler
+from utils.transformer import DropCols, GetNumerical
+from sklearn.impute import SimpleImputer
 from sklearn.dummy import DummyRegressor
 
-model = DummyRegressor(strategy="mean")
+model = Pipeline(
+    [
+        ("drop_cols", DropCols(cols=["date", "train", "year", "sum_pred", "phase"])),
+        ("ohe", TargetEncoder(cols=["country", "brand", "month"])),
+        ("get_numerical", GetNumerical()),  # TODO: Remove this
+        ("imputer", SimpleImputer(strategy="mean")),
+        ("scaler", StandardScaler()),
+        ("model", Lasso(alpha=0.1)),
+    ]
+)
+
 model.fit(X_tr, y_tr)
-
-
+# %%
+# Is the model learning?
+model.named_steps["model"].coef_
 # %%
 # Check performance
 ## Train
