@@ -14,6 +14,13 @@ def add_date_cols(df):
     df["month"] = df["date"].dt.month
     df["quarter"] = df["date"].dt.quarter
     df["week"] = df.date.dt.isocalendar().week
+    df["quarter_w"] = np.where(
+        df["quarter"] == 1,
+        1,
+        np.where(df["quarter"] == 2, 0.75, np.where(df["quarter"] == 3, 0.66, 0.5)),
+    )
+    df["quarter_wm"] = df["quarter_w"] * df["month"]
+
     return df
 
 
