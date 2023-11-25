@@ -25,6 +25,28 @@ df = pd.concat([train_data, submission_data], axis=0)
 # Add date colummns
 df = add_date_cols(df)
 
+# Concatenate brand country and month
+df["brand_country_month"] = (
+    df["brand"] + "_" + df["country"] + "_" + df["month"].astype(str)
+)
+
+# Map dayweek with aggregated phase sum of groupby of country brand month
+df["dayweek"] = df["dayweek"].astype(str)
+# %%
+# Few columns
+df = df[
+    [
+        "brand",
+        "country",
+        "dayweek",
+        "month",
+        "phase",
+        "year",
+        "train",
+        "date",
+        "brand_country_month",
+    ]
+]
 # %%
 # Train Test Split
 X_subm = df[df.train == 0]
@@ -32,8 +54,10 @@ X = df[df.train == 1].drop(["phase"], axis=1)
 y = df[df.train == 1].phase
 # Temporal split
 X_tr, X_te, y_tr, y_te = train_test_split_temporal(
-    X, y, date_col="date", date_split="2021-01-01", filter=True
+    X, y, date_col="date", date_split="2021-01-01"
 )
+
+# Few columns
 
 # %%
 # Model
@@ -45,16 +69,21 @@ from utils.transformer import DropCols, GetNumerical
 from sklearn.impute import SimpleImputer
 from sklearn.dummy import DummyRegressor
 from xgboost import XGBRegressor
+from sklego.meta import GroupedPredictor
 
 model = Pipeline(
     [
         ("drop_cols", DropCols(cols=["date", "train", "year", "sum_pred", "phase"])),
-        ("ohe", TargetEncoder(cols=["country", "brand", "month"])),
-        ("get_numerical", GetNumerical()),  # TODO: Remove this
+        (
+            "ohe",
+            TargetEncoder(cols=["country", "brand", "month", "brand_country_month"]),
+        ),
+        # ("get_numerical", GetNumerical()),  # TODO: Remove this
         ("imputer", SimpleImputer(strategy="mean")),
         ("scaler", StandardScaler()),
-        ("model", XGBRegressor(max_depth=5, n_estimators=20, n_jobs=-1)),
-        # ("model", Lasso()),
+        # ("model", XGBRegressor(max_depth=5, n_estimators=20, n_jobs=-1)),
+        # ("model", Lasso(alpha=0.1)),
+        ("model", GroupedPredictor(Lasso(alpha=0.1), groups=["brand"])),
     ]
 )
 

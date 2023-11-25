@@ -11,3 +11,9 @@
  - A model per brand/country
  - Can we transform the Y so the optimization mirrors better the metric
 
+# Ideas Leo
+
+## Feature Engineering
+
+- Time since first sell of brand? Maybe there is some initial difference until the brand is fully settled? Maybe gives sense of maturity in the market?
+
