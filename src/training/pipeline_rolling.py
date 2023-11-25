@@ -9,7 +9,7 @@ from src.helper.helper import check_assert_sum_1, metric, scale_prediction
 from src.model_pipelines.dummy import DummyModelPipeline
 from src.model_pipelines.lgbm import LGBMModelPipeline
 from src.utils.preprocessing import add_date_cols
-from src.utils.validation import train_test_split_temporal
+from src.utils.validation import initial_train_test_split_temporal
 
 pipelines = {
     "lgbm": LGBMModelPipeline(),
@@ -32,7 +32,7 @@ def main(model_pipeline, submission_timestamp):
         ther_area=lambda x: x["ther_area"].astype(str).fillna("unknown"),
     ).pipe(add_date_cols)
 
-    rolling_df = pd.read_parquet(data_path / "rolling_features.parquet")
+    rolling_df = pd.read_parquet(data_path / "rolling_features_less_aggs.parquet")
 
     all_df = all_df.merge(rolling_df, on=["date", "brand", "country"], how="left")
 
@@ -43,13 +43,13 @@ def main(model_pipeline, submission_timestamp):
     X_raw = df.drop(columns=["phase"])
 
     # Prepare X_train, X_test, y_train and y_test for ML
-    X_train_raw, X_test_raw, y_train, y_test = train_test_split_temporal(
+    X_train_raw, X_test_raw, y_train, y_test = initial_train_test_split_temporal(
         X_raw, y, date_col="date"
     )
-    X_train = X_train_raw.drop(columns=["formatted_date", "date", "monthly"])
-    X_test = X_test_raw.drop(columns=["formatted_date", "date", "monthly"])
-    X = X_raw.drop(columns=["formatted_date", "date", "monthly"])
-    X_subm = submission_df.drop(columns=["formatted_date", "date", "monthly", "phase"])
+    X_train = X_train_raw.drop(columns=["formatted_date", "date", "monthly", "quarter_wm"])
+    X_test = X_test_raw.drop(columns=["formatted_date", "date", "monthly", "quarter_wm"])
+    X = X_raw.drop(columns=["formatted_date", "date", "monthly", "quarter_wm"])
+    X_subm = submission_df.drop(columns=["formatted_date", "date", "monthly", "phase", "quarter_wm"])
 
     # Get model and grid
     model_pipe = model_pipeline.get_pipeline()
@@ -70,7 +70,7 @@ def main(model_pipeline, submission_timestamp):
     print(f"Best params for {model_pipeline.model_name}: {model_cv.best_params_}")
     print(f"CV MSE for {model_pipeline.model_name}: {model_cv.best_score_}")
 
-    X_train_raw["prediction"] = model_cv.predict(X_train)
+    X_train_raw["prediction"] = model_cv.predict(X_train).clip(0, None)
     mse = mean_squared_error(X_train_raw["prediction"], y_train)
     print(f"Train MSE for {model_pipeline.model_name}: {mse}")
     X_train_pred = scale_prediction(X_train_raw)
@@ -97,7 +97,7 @@ def main(model_pipeline, submission_timestamp):
     model_pipe.fit(X, y, **fit_kwargs)
 
     PATH = Path("data")
-    submission_df["prediction"] = model_pipe.predict(X_subm)
+    submission_df["prediction"] = model_pipe.predict(X_subm).clip(0, None)
     submission_df = scale_prediction(submission_df)
     check_assert_sum_1(submission_df)
     submission = pd.read_csv(PATH / "submission_template.csv")
