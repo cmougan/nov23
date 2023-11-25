@@ -9,7 +9,7 @@ class LGBMModelPipeline:
         return Pipeline(
             [
                 ("encoder", TargetEncoder(cols=["brand", "country", "main_channel", "ther_area"])),
-                ("model", LGBMRegressor(random_state=42, n_jobs=-1, verbose=0)),
+                ("model", LGBMRegressor(random_state=42, n_jobs=-1, verbose=0, n_estimators=150)),
             ]
         )
 

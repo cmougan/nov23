@@ -36,6 +36,12 @@ def main(model_pipeline, submission_timestamp, message, rolling_file_name):
 
     all_df = all_df.merge(rolling_df, on=["date", "brand", "country"], how="left")
 
+    submission_df_raw["country_brand"] = submission_df_raw["country"] + submission_df_raw["brand"]
+    all_df["country_brand"] = all_df["country"] + all_df["brand"]
+    all_df = all_df[all_df.country_brand.isin(submission_df_raw.country_brand.unique())]
+    all_df = all_df.drop(columns=["country_brand"])
+    submission_df_raw = submission_df_raw.drop(columns=["country_brand"])
+
     df = all_df.query("date < '2022-01-01'")
     submission_df = all_df.query("date >= '2022-01-01'")
 
