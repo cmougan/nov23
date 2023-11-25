@@ -52,6 +52,10 @@ def run_aggregations(data, group_columns, agg_column, window_period, window_clos
         aggs = aggs.agg(pl.col(agg_column).mean().alias(f"{agg_column}_mean"))
     elif fn == "median":
         aggs = aggs.agg(pl.col(agg_column).median().alias(f"{agg_column}_median"))
+    elif fn == "q90":
+        aggs = aggs.agg(pl.col(agg_column).quantile(0.9).alias(f"{agg_column}_q90"))
+    elif fn == "q10":
+        aggs = aggs.agg(pl.col(agg_column).quantile(0.1).alias(f"{agg_column}_q10"))
 
     result_aggs = data.join(aggs, on=["date"] + group_columns, how="left")
 
@@ -61,7 +65,7 @@ def run_aggregations(data, group_columns, agg_column, window_period, window_clos
 # %%
 for n_years in range(1, 6):
 
-    for fn in ["mean", "median"]:
+    for fn in ["mean", "median", "q90", "q10"]:
         feature_bcm_wd = run_aggregations(
             all_data,
             group_columns=["brand", "country", "month", "wd"],
