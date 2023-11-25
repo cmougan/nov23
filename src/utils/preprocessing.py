@@ -2,6 +2,8 @@ import numpy as np
 
 import pandas as pd
 
+from typing import List
+
 
 def add_date_cols(df, add_weights=True):
     """
@@ -13,14 +15,21 @@ def add_date_cols(df, add_weights=True):
     df["year"] = df["date"].dt.year
     df["month"] = df["date"].dt.month
     df["quarter"] = df["date"].dt.quarter
-    df["week"] = df.date.dt.day_of_year // 7
+    df["dayweek"] = df["date"].dt.dayofweek
+    df["week"] = df["date"].dt.day_of_year // 7  # df["date"].dt.isocalendar().week
+    df = get_week_inmonth(df)  # Add week in month
+
+    df["Week_day"] = (
+        df.num_week_month.astype(str) + "-" + df.date.dt.dayofweek.astype(str)
+    )
+
     df["quarter_w"] = np.where(
         df["quarter"] == 1,
         1,
         np.where(df["quarter"] == 2, 0.75, np.where(df["quarter"] == 3, 0.66, 0.5)),
     )
     if add_weights:
-        df["quarter_wm"] = df["quarter_w"] * df["monthly"]
+         df["quarter_wm"] = df["quarter_w"] * df["monthly"]
 
     return df
 
@@ -241,4 +250,68 @@ def get_days_sincestart_toend(
         days_until_end=lambda x: (x.end_date - x.date).dt.days,
     )
     df.drop(columns=["start_date", "end_date"], inplace=True)
+    return df
+
+
+def get_ther_areas_group(df, grouping: List):
+    """
+    Get the ther_areas that are in the group.
+    It can be used with brand, brand and country, etc.
+    """
+    df = df.copy()
+    name = "_".join(grouping)
+    unique_ther_areas = df.groupby(grouping).apply(
+        lambda x: pd.Series(
+            {
+                f"unique_areas_{name}": "-".join(
+                    set(x["ther_area"].dropna().unique().tolist())
+                )
+            }
+        )
+    )
+
+    df = df.merge(unique_ther_areas, on=grouping)
+
+    return df
+
+
+def get_ther_areas_data(df):
+    """
+    Get the ther_areas that are in the group.
+    It can be used with brand, brand and country, etc.
+
+    """
+    df = df.copy()
+    df = get_ther_areas_group(df, ["brand", "country"])
+    df = get_ther_areas_group(df, ["brand"])
+    df = get_ther_areas_group(df, ["country"])
+    return df
+
+
+def get_week_inmonth(df: pd.DataFrame):
+    """
+    Get the week in the month
+    """
+    df = df.copy()
+    tmp = (
+        df.groupby(["year", "month"])
+        .agg(
+            first_week=("week", "min"),
+        )
+        .reset_index()
+    )
+
+    df = df.merge(tmp, on=["year", "month"]).assign(
+        num_week_month=lambda x: x.week - x.first_week
+    )
+    return df
+
+
+def add_covid_exo(df, start_from = '2020-03-01', end_at = None):
+
+    df = df.copy()
+    df['covid'] = 0
+    df.loc[df.date >= start_from, 'covid'] = 1
+    if end_at is not None:
+        df.loc[df.date >= end_at, 'covid'] = 0
     return df
