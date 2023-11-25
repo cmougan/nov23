@@ -21,18 +21,18 @@ def train_test_split_temporal(
         X_ = X[X.country_brand.isin(unique_test_country_brand())]
     if also_train:
         X_tr = X_[X_[date_col] < date_split].drop(["y", "country_brand"], axis=1)
-        y_tr = X_[X_[date_col] < date_split].drop(["y"], axis=1)
+        y_tr = X_[X_[date_col] < date_split]["y"]
     else:
         X_tr = X[X[date_col] < date_split].drop(["y", "country_brand"], axis=1)
-        y_tr = X[X[date_col] < date_split].drop(["y"], axis=1)
+        y_tr = X[X[date_col] < date_split]["y"]
     # If filter remove from test the country_brand that are not in submission_data
 
     if filter:
         X_te = X_[X_[date_col] >= date_split].drop(["y", "country_brand"], axis=1)
-        y_te = X_[X_[date_col] >= date_split].drop(["y"], axis=1)
+        y_te = X_[X_[date_col] >= date_split]["y"]
     else:
         X_te = X[X[date_col] >= date_split].drop(["y", "country_brand"], axis=1)
-        y_te = X[X[date_col] >= date_split].drop(["y"], axis=1)
+        y_te = X[X[date_col] >= date_split]["y"]
     return X_tr, X_te, y_tr, y_te
 
 
