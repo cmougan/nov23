@@ -2,11 +2,15 @@
 import pandas as pd
 
 # %%
-train_data = pd.read_parquet("data/201_feateng_train_data.parquet").drop(columns = ['level_0','level_1'])
+train_data = pd.read_parquet("data/201_feateng_train_data.parquet").drop(
+    columns=["level_0", "level_1"]
+)
 print(train_data.isna().sum() / len(train_data))
 
 # %%
-submission_data = pd.read_parquet("data/201_feateng_test_data.parquet").drop(columns = ['level_0','level_1'])
+submission_data = pd.read_parquet("data/201_feateng_test_data.parquet").drop(
+    columns=["level_0", "level_1"]
+)
 print(submission_data.isna().sum() / len(train_data))
 
 # %%
@@ -65,8 +69,8 @@ y = train_data["phase"]
 X = transform_data(train_data, categorical_feat)
 # %%
 
-lag_feats = [k for k in X.keys() if 'lag_' in k]
-X[lag_feats] = X[lag_feats].fillna(method = 'ffill').astype(float)
+lag_feats = [k for k in X.keys() if "lag_" in k]
+X[lag_feats] = X[lag_feats].fillna(method="ffill").astype(float)
 
 
 # %%
@@ -106,12 +110,12 @@ train_data = scale_prediction(train_data)
 metric(train_data)
 # %%
 X_subm = transform_data(submission_data, categorical_feat)
-X_subm[lag_feats] = X_subm[lag_feats].fillna(method = 'ffill').astype(float)
+X_subm[lag_feats] = X_subm[lag_feats].fillna(method="ffill").astype(float)
 y_pred_sum = estimator.predict(X_subm)
 #%%
-y_pred_sum = np.clip(y_pred_sum,0,np.inf)
+y_pred_sum = np.clip(y_pred_sum, 0, np.inf)
 # %%
-submission_data['prediction'] = y_pred_sum
+submission_data["prediction"] = y_pred_sum
 submission_data = scale_prediction(submission_data)
 
 # %%
@@ -119,7 +123,7 @@ submission_template = pd.read_csv("data/submission_template.csv")
 submission_data = submission_data[submission_template.keys()]
 # %%
 # Save Submission
-sub_number = '_lags_v2'
+sub_number = "_lags_v2"
 sub_name = "submission/submission{}.csv".format(sub_number)
 submission_data.to_csv(sub_name, index=False)
 
@@ -135,13 +139,12 @@ submission_data.to_csv(sub_name, index=False)
 #%%
 from sklearn.linear_model import Lasso
 from sklearn.preprocessing import StandardScaler
+
 # %%
-X_non_cat = X.drop(columns = ["ther_area",
-    "main_channel",
-    "brand",
-    "country",
-    "hospital_rate"])
-X_non_cat = X_non_cat.fillna(method = 'ffill').astype(float).fillna(0)
+X_non_cat = X.drop(
+    columns=["ther_area", "main_channel", "brand", "country", "hospital_rate"]
+)
+X_non_cat = X_non_cat.fillna(method="ffill").astype(float).fillna(0)
 #%%
 X_non_cat.isna().sum().sum()
 
@@ -149,8 +152,8 @@ X_non_cat.isna().sum().sum()
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X_non_cat)
 # %%
-lasso = Lasso(alpha = 0.001)
-lasso.fit(X_scaled,y)
+lasso = Lasso(alpha=0.001)
+lasso.fit(X_scaled, y)
 # %%
-print(lasso.coef_,X_non_cat.columns)
+print(lasso.coef_, X_non_cat.columns)
 # %%
