@@ -4,18 +4,35 @@ import pandas as pd
 
 
 def train_test_split_temporal(
-    X, y, date_col: str = "date", date_split: str = "2019-01-01", filter: bool = False
+    X,
+    y,
+    date_col: str = "date",
+    date_split: str = "2019-01-01",
+    filter: bool = False,
+    also_train: bool = False,
 ):
-    X_tr = X[X[date_col] < date_split]
-    y_tr = y[X[date_col] < date_split]
-    # If filter remove from test the country_brand that are not in submission_data
-    if filter:
-        X["y"] = y
-        X["country_brand"] = X["country"] + X["brand"]
-        X = X[X.country_brand.isin(unique_test_country_brand())]
+    if also_train and filter == False:
+        raise ValueError("If also_train is True, filter must be True")
 
-    X_te = X[X[date_col] >= date_split].drop(["y"], axis=1)
-    y_te = X[X[date_col] >= date_split]["y"]
+    X["y"] = y
+    X["country_brand"] = X["country"] + X["brand"]
+
+    if filter:
+        X_ = X[X.country_brand.isin(unique_test_country_brand())]
+    if also_train:
+        X_tr = X_[X_[date_col] < date_split].drop(["y", "country_brand"], axis=1)
+        y_tr = X_[X_[date_col] < date_split].drop(["y"], axis=1)
+    else:
+        X_tr = X[X[date_col] < date_split].drop(["y", "country_brand"], axis=1)
+        y_tr = X[X[date_col] < date_split].drop(["y"], axis=1)
+    # If filter remove from test the country_brand that are not in submission_data
+
+    if filter:
+        X_te = X_[X_[date_col] >= date_split].drop(["y", "country_brand"], axis=1)
+        y_te = X_[X_[date_col] >= date_split].drop(["y"], axis=1)
+    else:
+        X_te = X[X[date_col] >= date_split].drop(["y", "country_brand"], axis=1)
+        y_te = X[X[date_col] >= date_split].drop(["y"], axis=1)
     return X_tr, X_te, y_tr, y_te
 
 
@@ -61,24 +78,41 @@ df = pd.concat([train_data, submission_data], axis=0)
 # Feature Engineering
 ## TODO: Add feature engineering
 
-
+# %%
 # Train Test Split
 X_subm = df[df.train == 0]
 X = df[df.train == 1].drop(["phase"], axis=1)
 y = df[df.train == 1].phase
 # Temporal split
 X_tr, X_te, y_tr, y_te = train_test_split_temporal(
+    X, y, date_col="date", date_split="2021-01-01", 
+)
+print('Filter=False','AlsoTrain=False')
+print('X_tr.shape',X_tr.shape)
+print('X_te.shape',X_te.shape)
+# Temporal split
+X_tr, X_te, y_tr, y_te = train_test_split_temporal(
     X, y, date_col="date", date_split="2021-01-01", filter=True
 )
+print('Filter=True','AlsoTrain=False')
+print('X_tr.shape',X_tr.shape)
+print('X_te.shape',X_te.shape)
+# Temporal split
+X_tr, X_te, y_tr, y_te = train_test_split_temporal(
+    X, y, date_col="date", date_split="2021-01-01", filter=True,also_train=True
+)
+print('Filter=True','AlsoTrain=Train')
+print('X_tr.shape',X_tr.shape)
+print('X_te.shape',X_te.shape)
 
+# %%
+# Should raise an error
+X_tr, X_te, y_tr, y_te = train_test_split_temporal(
+    X, y, date_col="date", date_split="2021-01-01", filter=False,also_train=True
+)
+print('Filter=False','AlsoTrain=False')
+print('X_tr.shape',X_tr.shape)
+print('X_te.shape',X_te.shape)
 
-# %%
-X['country_brand'] = X['country'] + X['brand']
-# %%
-X = X[X.country_brand.isin(unique_test_country_brand())]
-# %%
-y_te = y[X['date'] >= '2019-01-01']
-# %%
-unique_test_country_brand()
 # %%
 """
