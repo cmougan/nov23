@@ -32,29 +32,28 @@ submission_data["code"] = [
     for brand, country in zip(submission_data["brand"], submission_data["country"])
 ]
 
-
+unique_codes_test = submission_data.code.unique().tolist()
 print(f'Unique brands in submission: {submission_data["brand"].nunique()}')
 print(f'Unique countries in submission: {submission_data["country"].nunique()}')
 print(f'Unique tuples in submission: {submission_data["code"].nunique()}')
 # %%
-
+train_data = train_data.query('code in @unique_codes_test and date>"2017-01-01"')
+# %%
 from lightgbm import LGBMRegressor
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.preprocessing import LabelEncoder
 from sklearn.impute import KNNImputer
 import numpy as np
 from src.helper.helper import add_date_cols
-
+from category_encoders import TargetEncoder, OrdinalEncoder
 
 # %%
 categorical_feat = [
-    "year",
-    "quarter",
-    "month",
     "ther_area",
     "main_channel",
     "brand",
     "country",
+    "Week_day",
 ]
 
 
@@ -70,11 +69,22 @@ X = transform_data(train_data, categorical_feat)
 # %%
 
 lag_feats = [k for k in X.keys() if "lag_" in k]
-X[lag_feats] = X[lag_feats].fillna(method="ffill").astype(float)
-
+X[lag_feats] = X[lag_feats].astype(float)
+# %%
+X.index = train_data.index
 
 # %%
-estimator = LGBMRegressor(categorical_feature=categorical_feat)
+X[["ther_area", "Week_day", "main_channel"]] = TargetEncoder().fit_transform(
+    X[["ther_area", "Week_day", "main_channel"]].astype(str).fillna("unknown"), y
+)
+
+X[["brand", "country"]] = OrdinalEncoder().fit_transform(X[["brand", "country"]])
+# %%
+from src.utils.preprocessing import calculate_time_features
+
+X = calculate_time_features(X, "date")
+# %%
+estimator = LGBMRegressor(n_jobs=1, random_state=42)
 # %%
 # from sklearn.model_selection import cross_val_score
 
@@ -82,9 +92,14 @@ estimator = LGBMRegressor(categorical_feature=categorical_feat)
 # print(score)
 
 # %%
-from src.utils.validation import train_test_split_temporal
 
-X_tr, X_te, y_tr, y_te = train_test_split_temporal(X, y)
+# %%
+from src.utils.validation import (
+    train_test_split_temporal,
+    initial_train_test_split_temporal,
+)
+
+X_tr, X_te, y_tr, y_te = initial_train_test_split_temporal(X, y)
 # %%
 estimator.fit(X_tr.drop(columns=["date", "monthly"]), y_tr)
 # %%
@@ -96,6 +111,7 @@ from src.helper.helper import metric, scale_prediction
 
 X_tr["prediction"] = y_pred
 X_te["prediction"] = y_te_pred
+
 
 X_tr = scale_prediction(X_tr)
 X_te = scale_prediction(X_te)

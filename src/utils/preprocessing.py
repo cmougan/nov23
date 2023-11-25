@@ -29,7 +29,7 @@ def add_date_cols(df, add_weights=True):
         np.where(df["quarter"] == 2, 0.75, np.where(df["quarter"] == 3, 0.66, 0.5)),
     )
     if add_weights:
-         df["quarter_wm"] = df["quarter_w"] * df["monthly"]
+        df["quarter_wm"] = df["quarter_w"] * df["monthly"]
 
     return df
 
@@ -45,27 +45,27 @@ def calculate_time_features(df, time_column):
     year_cycle = 12
     df[f"sin_year"] = np.sin(2 * np.pi * df[f"year"] / year_cycle)
     df[f"cos_year"] = np.cos(2 * np.pi * df[f"year"] / year_cycle)
-    df.drop(columns=[f"year"], inplace=True)
+    # df.drop(columns=[f"year"], inplace=True)
 
     quarter_cycle = 4
     df[f"sin_quarter"] = np.sin(2 * np.pi * df[f"quarter"] / quarter_cycle)
     df[f"cos_quarter"] = np.cos(2 * np.pi * df[f"quarter"] / quarter_cycle)
-    df.drop(columns=[f"quarter"], inplace=True)
+    # df.drop(columns=[f"quarter"], inplace=True)
 
     month_cycle = 12
     df[f"sin_month"] = np.sin(2 * np.pi * df[f"month"] / month_cycle)
     df[f"cos_month"] = np.cos(2 * np.pi * df[f"month"] / month_cycle)
-    df.drop(columns=[f"month"], inplace=True)
+    # df.drop(columns=[f"month"], inplace=True)
 
     week_cycle = 53
     df[f"sin_week"] = np.sin(2 * np.pi * df[f"week"] / week_cycle)
     df[f"cos_week"] = np.cos(2 * np.pi * df[f"week"] / week_cycle)
-    df.drop(columns=[f"week"], inplace=True)
+    # df.drop(columns=[f"week"], inplace=True)
 
     day_cycle = 7
     df[f"sin_day"] = np.sin(2 * np.pi * df[f"dayweek"] / day_cycle)
     df[f"cos_day"] = np.cos(2 * np.pi * df[f"dayweek"] / day_cycle)
-    df.drop(columns=[f"dayweek"], inplace=True)
+    # df.drop(columns=[f"dayweek"], inplace=True)
 
     return df
 
@@ -307,11 +307,10 @@ def get_week_inmonth(df: pd.DataFrame):
     return df
 
 
-def add_covid_exo(df, start_from = '2020-03-01', end_at = None):
-
+def add_covid_exo(df, start_from="2020-03-01", end_at=None):
     df = df.copy()
-    df['covid'] = 0
-    df.loc[df.date >= start_from, 'covid'] = 1
+    df["covid"] = 0
+    df.loc[df.date >= start_from, "covid"] = 1
     if end_at is not None:
-        df.loc[df.date >= end_at, 'covid'] = 0
+        df.loc[df.date >= end_at, "covid"] = 0
     return df
