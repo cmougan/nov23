@@ -1,6 +1,6 @@
 # %%
 import pandas as pd
-from src.utils.preprocessing import add_basic_valid_lag_features_neighbour
+from src.utils.preprocessing import add_basic_lag_features_week
 
 # %%
 train_data = pd.read_parquet("data/train_data.parquet")
@@ -27,7 +27,7 @@ tqdm.pandas()
 # %%
 total_data_with_lags = (
     total_data.groupby("code", as_index=False).progress_apply(
-        lambda x: add_basic_valid_lag_features_neighbour(x, 5, 10, 3)
+        lambda x: add_basic_lag_features_week(x, 20, 5, 5)
     )
 ).reset_index()
 # %%
@@ -35,10 +35,10 @@ lags_features = [k for k in total_data_with_lags.keys() if "lag_" in k]
 # fillna?
 # %%
 total_data_with_lags.query('date<"01-01-2022"').to_parquet(
-    "data/203_feateng_train_data.parquet"
+    "data/204_feateng_train_data.parquet"
 )
 total_data_with_lags.query('date>="01-01-2022"').to_parquet(
-    "data/203_feateng_test_data.parquet"
+    "data/204_feateng_test_data.parquet"
 )
 
 

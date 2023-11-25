@@ -2,13 +2,13 @@
 import pandas as pd
 
 # %%
-train_data = pd.read_parquet("data/202_feateng_train_data.parquet").drop(
+train_data = pd.read_parquet("data/203_feateng_train_data.parquet").drop(
     columns=["level_0", "level_1"]
 )
 print(train_data.isna().sum() / len(train_data))
 
 # %%
-submission_data = pd.read_parquet("data/202_feateng_test_data.parquet").drop(
+submission_data = pd.read_parquet("data/203_feateng_test_data.parquet").drop(
     columns=["level_0", "level_1"]
 )
 print(submission_data.isna().sum() / len(train_data))
@@ -99,15 +99,16 @@ X_te["prediction"] = y_te_pred
 
 X_tr = scale_prediction(X_tr)
 X_te = scale_prediction(X_te)
-#%%
+# %%
 metric(X_tr.join(y_tr))
-#%%
+# %%
 metric(X_te.join(y_te))
 
 # %%
 
-estimator.fit(X, y)
-y_pred = estimator.predict(X)
+estimator.fit(X.drop(columns=["date", "monthly"]), y)
+# %%
+y_pred = estimator.predict(X.drop(columns=["date", "monthly"]))
 # %%
 train_data["prediction"] = y_pred
 train_data = scale_prediction(train_data)
@@ -115,7 +116,7 @@ metric(train_data)
 # %%
 X_subm = transform_data(submission_data, categorical_feat)
 X_subm[lag_feats] = X_subm[lag_feats].fillna(method="ffill").astype(float)
-y_pred_sum = estimator.predict(X_subm)
+y_pred_sum = estimator.predict(X_subm.drop(columns=["date", "monthly"]))
 # %%
 y_pred_sum = np.clip(y_pred_sum, 0, np.inf)
 # %%
@@ -127,7 +128,7 @@ submission_template = pd.read_csv("data/submission_template.csv")
 submission_data = submission_data[submission_template.keys()]
 # %%
 # Save Submission
-sub_number = "_lags_v3"
+sub_number = "_lags_neighbour"
 sub_name = "submission/submission{}.csv".format(sub_number)
 submission_data.to_csv(sub_name, index=False)
 
@@ -140,7 +141,15 @@ from sklearn.preprocessing import StandardScaler
 
 # %%
 X_non_cat = X.drop(
-    columns=["ther_area", "main_channel", "brand", "country", "hospital_rate"]
+    columns=[
+        "ther_area",
+        "main_channel",
+        "brand",
+        "country",
+        "hospital_rate",
+        "date",
+        "monthly",
+    ]
 )
 X_non_cat = X_non_cat.fillna(method="ffill").astype(float).fillna(0)
 # %%
@@ -153,5 +162,7 @@ X_scaled = scaler.fit_transform(X_non_cat)
 lasso = Lasso(alpha=0.001)
 lasso.fit(X_scaled, y)
 # %%
-print(lasso.coef_, X_non_cat.columns)
+for i in range(len(lasso.coef_)):
+    if lasso.coef_[i] != 0:
+        print(lasso.coef_[i], X_non_cat.columns[i])
 # %%

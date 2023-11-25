@@ -82,6 +82,25 @@ def add_basic_lag_features(df, n_lags_day, n_lags_month, n_lags_yr):
     return df.reset_index()
 
 
+def add_basic_lag_features_week(df, n_lags_day, n_lags_month, n_lags_week):
+    df["date"] = pd.to_datetime(df["date"])
+    df = df.set_index("date")
+    for i in range(1, n_lags_day + 1):
+        df[f"lag_phase_{i}_days"] = df.phase.shift(i, freq="D")
+
+    for i in range(1, n_lags_month + 1):
+        df[f"lag_phase_{i}_month_exact"] = df.phase.shift(30 * i, freq="D")
+        df[f"lag_phase_{i}_month_before"] = df.phase.shift(30 * i - 1, freq="D")
+        df[f"lag_phase_{i}_month_after"] = df.phase.shift(30 * i + 1, freq="D")
+
+    for i in range(1, n_lags_week + 1):
+        df[f"lag_phase_{i}_week_exact"] = df.phase.shift(365 * i, freq="D")
+        df[f"lag_phase_{i}_week_before"] = df.phase.shift(365 * i - 1, freq="D")
+        df[f"lag_phase_{i}_week_after"] = df.phase.shift(365 * i + 1, freq="D")
+
+    return df.reset_index()
+
+
 def add_basic_valid_lag_features(df, n_lags_day, n_lags_month, n_lags_yr):
     df["date"] = pd.to_datetime(df["date"])
     df = df.set_index("date")
@@ -95,31 +114,12 @@ def add_basic_valid_lag_features(df, n_lags_day, n_lags_month, n_lags_yr):
             .fillna(df.phase.shift(365 + 30 * i - 1, freq="D"))
         )
 
-        # Como hacer el mean
-        # np.nanmean(
-        #     [
-        #         df.phase.shift(365 + 30 * i, freq="D"),
-        #         df.phase.shift(365 + 30 * i + 1, freq="D"),
-        #         df.phase.shift(365 + 30 * i - 1, freq="D"),
-        #     ],
-        #     axis=0,
-        # )
-
     for i in range(1, n_lags_yr + 1):
         df[f"lag_phase_{i}_yr"] = (
             df.phase.shift(365 + 365 * i, freq="D")
             .fillna(df.phase.shift(365 + 365 * i + 1, freq="D"))
             .fillna(df.phase.shift(365 + 365 * i - 1, freq="D"))
         )
-
-        # np.nanmean(
-        #     [
-        #         df.phase.shift(365 + 365 * i, freq="D"),
-        #         df.phase.shift(365 + 365 * i + 1, freq="D"),
-        #         df.phase.shift(365 + 365 * i - 1, freq="D"),
-        #     ],
-        #     axis=0,
-        # )
 
     return df.reset_index()
 
