@@ -70,7 +70,7 @@ def main(model_pipeline, submission_timestamp):
     print(f"Best params for {model_pipeline.model_name}: {model_cv.best_params_}")
     print(f"CV MSE for {model_pipeline.model_name}: {model_cv.best_score_}")
 
-    X_train_raw["prediction"] = model_cv.predict(X_train)
+    X_train_raw["prediction"] = model_cv.predict(X_train).clip(0, None)
     mse = mean_squared_error(X_train_raw["prediction"], y_train)
     print(f"Train MSE for {model_pipeline.model_name}: {mse}")
     X_train_pred = scale_prediction(X_train_raw)
@@ -97,7 +97,7 @@ def main(model_pipeline, submission_timestamp):
     model_pipe.fit(X, y, **fit_kwargs)
 
     PATH = Path("data")
-    submission_df["prediction"] = model_pipe.predict(X_subm)
+    submission_df["prediction"] = model_pipe.predict(X_subm).clip(0, None)
     submission_df = scale_prediction(submission_df)
     check_assert_sum_1(submission_df)
     submission = pd.read_csv(PATH / "submission_template.csv")
