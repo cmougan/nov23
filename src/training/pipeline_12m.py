@@ -38,6 +38,12 @@ def main(model_pipeline, submission_timestamp, message, rolling_file_name):
 
     all_df = all_df.merge(rolling_df, on=["date", "brand", "country"], how="left")
 
+    submission_df_raw["country_brand"] = submission_df_raw["country"] + submission_df_raw["brand"]
+    all_df["country_brand"] = all_df["country"] + all_df["brand"]
+    all_df = all_df[all_df.country_brand.isin(submission_df_raw.country_brand.unique())]
+    all_df = all_df.drop(columns=["country_brand"])
+    submission_df_raw = submission_df_raw.drop(columns=["country_brand"])
+
     block_df = all_df.copy()
 
     for month in tqdm(range(1, 13)):
@@ -67,12 +73,17 @@ def main(model_pipeline, submission_timestamp, message, rolling_file_name):
         y = df.phase
         X_raw = df.drop(columns=["phase"])
 
+
+        if model_pipeline.model_name == "lgbm":
+            for col in ["country", "brand", "main_channel", "ther_area"]:
+                X_raw[col] = X_raw[col].astype("category")
+                submission_df[col] = submission_df[col].astype("category")
+
         # Prepare X_train, X_test, y_train and y_test for ML
-        X_train_raw, X_test_raw, y_train, y_test = initial_train_test_split_temporal(
+        X_train_raw, X_test_raw, y_train, _ = initial_train_test_split_temporal(
             X_raw, y, date_col="date"
         )
         X_train = X_train_raw.drop(columns=["formatted_date", "date", "monthly", "quarter_wm"])
-        X_test = X_test_raw.drop(columns=["formatted_date", "date", "monthly", "quarter_wm"])
         X = X_raw.drop(columns=["formatted_date", "date", "monthly", "quarter_wm"])
         X_subm = submission_df.drop(columns=["formatted_date", "date", "monthly", "phase", "quarter_wm"])
 
