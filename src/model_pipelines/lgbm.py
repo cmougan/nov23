@@ -15,8 +15,9 @@ class LGBMModelPipeline:
 
     def get_grid(self):
         return {
-            "model__n_estimators": [5],
+            "model__n_estimators": [300],
         }
 
     def get_fit_kwargs(self, X_train):
+        # TODO: this needs to change to actual weights
         return {"model__sample_weight": X_train["monthly"]}
