@@ -1,3 +1,4 @@
+from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
@@ -17,18 +18,26 @@ pipelines = {
 
 
 
-def main(model_pipeline):
+def main(model_pipeline, submission_timestamp):
 
     # Load data
     data_path = Path("data")
-    df = pd.read_parquet(data_path / "train_data.parquet").assign(
+    submission_df_raw = pd.read_parquet(data_path / "submission_data.parquet")
+    train_df = pd.read_parquet(data_path / "train_data.parquet")
+
+    all_df = pd.concat([train_df, submission_df_raw])
+
+    all_df = all_df.assign(
         main_channel=lambda x: x["main_channel"].astype(str).fillna("unknown"),
         ther_area=lambda x: x["ther_area"].astype(str).fillna("unknown"),
     ).pipe(add_date_cols)
 
     rolling_df = pd.read_parquet(data_path / "rolling_features.parquet")
 
-    df = df.merge(rolling_df, on=["date", "brand", "country"], how="left")
+    all_df = all_df.merge(rolling_df, on=["date", "brand", "country"], how="left")
+
+    df = all_df.query("date < '2022-01-01'")
+    submission_df = all_df.query("date >= '2022-01-01'")
 
     y = df.phase
     X_raw = df.drop(columns=["phase"])
@@ -40,6 +49,7 @@ def main(model_pipeline):
     X_train = X_train_raw.drop(columns=["formatted_date", "date", "monthly"])
     X_test = X_test_raw.drop(columns=["formatted_date", "date", "monthly"])
     X = X_raw.drop(columns=["formatted_date", "date", "monthly"])
+    X_subm = submission_df.drop(columns=["formatted_date", "date", "monthly", "phase"])
 
     # Get model and grid
     model_pipe = model_pipeline.get_pipeline()
@@ -86,6 +96,19 @@ def main(model_pipeline):
     model_pipe.set_params(**model_cv.best_params_)
     model_pipe.fit(X, y, **fit_kwargs)
 
+    PATH = Path("data")
+    submission_df["prediction"] = model_pipe.predict(X_subm)
+    submission_df = scale_prediction(submission_df)
+    check_assert_sum_1(submission_df)
+    submission = pd.read_csv(PATH / "submission_template.csv")
+    submission = submission_df[submission.columns]
+
+    SAVE_PATH = Path("submissions")
+    SAVE_PATH.mkdir(exist_ok=True)
+    submission.to_csv(SAVE_PATH / f"submission_{submission_timestamp}.csv", index=False)
+
+
+
 
 def parse_args():
     import argparse
@@ -98,4 +121,5 @@ def parse_args():
 
 if __name__ == "__main__":
     args = parse_args()
-    main(pipelines[args.model])
+    now = datetime.now()
+    main(pipelines[args.model], now.strftime("%Y-%m-%d_%H-%M-%S"))
