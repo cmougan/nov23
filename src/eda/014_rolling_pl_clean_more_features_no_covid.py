@@ -1,4 +1,6 @@
 # %% 
+import datetime
+
 import numpy as np
 import polars as pl
 
@@ -20,6 +22,10 @@ all_data = (
     .sort(["brand", "country", "date"])
     .with_columns(
         pl.col('date').apply(lambda x: x.strftime('%m%d')).alias('formatted_date')
+    )
+    .filter(
+        # remove covid months
+        (pl.col("date") < datetime.datetime(2020, 2, 1)) | (pl.col("date") >= datetime.datetime(2020, 5, 1))
     )
 )
 
@@ -98,7 +104,7 @@ for n_years in range(1, 6):
             agg_column="phase",
             window_period=f"{n_years}y",
             window_closed="left",
-            window_offset=f"{-n_years - 1}y",
+            window_offset=None,
             fn=fn
         )
 
@@ -171,7 +177,7 @@ new_features = set(all_data.columns).difference(set(submission_data.columns))
 new_features
 
 # %%
-all_data[["date", "country", "brand"] + list(new_features)].write_parquet("data/rolling_features_less_aggs.parquet")
+all_data[["date", "country", "brand"] + list(new_features)].write_parquet("data/rolling_features_less_aggs_no_covid.parquet")
 
 # %%
 all_data[["date", "country", "brand"] + list(new_features)]

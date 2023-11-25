@@ -18,7 +18,7 @@ pipelines = {
 
 
 
-def main(model_pipeline, submission_timestamp):
+def main(model_pipeline, submission_timestamp, message, rolling_file_name):
 
     # Load data
     data_path = Path("data")
@@ -32,7 +32,7 @@ def main(model_pipeline, submission_timestamp):
         ther_area=lambda x: x["ther_area"].astype(str).fillna("unknown"),
     ).pipe(add_date_cols)
 
-    rolling_df = pd.read_parquet(data_path / "rolling_features_less_aggs.parquet")
+    rolling_df = pd.read_parquet(data_path / rolling_file_name)
 
     all_df = all_df.merge(rolling_df, on=["date", "brand", "country"], how="left")
 
@@ -105,7 +105,7 @@ def main(model_pipeline, submission_timestamp):
 
     SAVE_PATH = Path("submissions")
     SAVE_PATH.mkdir(exist_ok=True)
-    submission.to_csv(SAVE_PATH / f"submission_{submission_timestamp}.csv", index=False)
+    submission.to_csv(SAVE_PATH / f"submission_{submission_timestamp}_{message}.csv", index=False)
 
 
 
@@ -117,9 +117,19 @@ def parse_args():
     parser.add_argument(
         "--model", type=str, default="lgbm", help="Model to train", choices=pipelines.keys()
     )
+    parser.add_argument(
+        "--message", type=str, default="", help="Message to add to submission file name"
+    )
+    parser.add_argument(
+        "--rolling-file-name", type=str, default="rolling_features_less_aggs.parquet",
+        help="File name of rolling features to use"
+    )
+
     return parser.parse_args()
 
 if __name__ == "__main__":
     args = parse_args()
     now = datetime.now()
-    main(pipelines[args.model], now.strftime("%Y-%m-%d_%H-%M-%S"))
+    message = args.message
+    rolling_file_name = args.rolling_file_name
+    main(pipelines[args.model], now.strftime("%Y-%m-%d_%H-%M-%S"), message, rolling_file_name)
