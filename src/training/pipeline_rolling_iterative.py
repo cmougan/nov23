@@ -79,7 +79,7 @@ model1 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area"]),
+            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
         ),
         (
             "model",
@@ -91,7 +91,7 @@ model2 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area"]),
+            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
         ),
         (
             "model",
@@ -103,7 +103,7 @@ model3 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area"]),
+            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
         ),
         (
             "model",
@@ -115,7 +115,7 @@ model4 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area"]),
+            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
         ),
         (
             "model",
@@ -127,7 +127,7 @@ model5 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area"]),
+            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
         ),
         (
             "model",
@@ -139,7 +139,7 @@ model6 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area"]),
+            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
         ),
         (
             "model",
@@ -151,7 +151,7 @@ model7 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area"]),
+            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
         ),
         (
             "model",
@@ -163,7 +163,7 @@ model8 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area"]),
+            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
         ),
         (
             "model",
@@ -175,7 +175,7 @@ model9 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area"]),
+            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
         ),
         (
             "model",
@@ -187,7 +187,7 @@ model10 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area"]),
+            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
         ),
         (
             "model",
@@ -199,7 +199,7 @@ model11 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area"]),
+            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
         ),
         (
             "model",
@@ -211,7 +211,7 @@ model12 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area"]),
+            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
         ),
         (
             "model",
@@ -529,3 +529,5 @@ check_assert_sum_1(X_test_pred)
 metric_test = metric(X_test_pred)
 
 print(f"Test metric : {metric_test}")
+
+# %%
