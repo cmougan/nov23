@@ -13,6 +13,7 @@ def initial_train_test_split_temporal(
     y_te = y[X[date_col] >= date_split]
     return X_tr, X_te, y_tr, y_te
 
+
 def train_test_split_temporal(
     X,
     y,
@@ -25,7 +26,7 @@ def train_test_split_temporal(
         raise ValueError("If also_train is True, filter must be True")
 
     X["y"] = y
-    X["country_brand"] = X["country"] + X["brand"]
+    X["country_brand"] = X["country"].astype(str) + X["brand"].astype(str)
 
     if filter:
         X_ = X[X.country_brand.isin(unique_test_country_brand())]
