@@ -37,9 +37,9 @@ def main(model_pipeline):
     X_train_raw, X_test_raw, y_train, y_test = train_test_split_temporal(
         X_raw, y, date_col="date", date_split="2019-01-01"
     )
-    X_train = X_train_raw.drop(columns=["date", "monthly"])
-    X_test = X_test_raw.drop(columns=["date", "monthly"])
-    X = X_raw.drop(columns=["date", "monthly"])
+    X_train = X_train_raw.drop(columns=["formatted_date", "date", "monthly"])
+    X_test = X_test_raw.drop(columns=["formatted_date", "date", "monthly"])
+    X = X_raw.drop(columns=["formatted_date", "date", "monthly"])
 
     # Get model and grid
     model_pipe = model_pipeline.get_pipeline()
