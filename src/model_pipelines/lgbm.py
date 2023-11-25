@@ -20,4 +20,5 @@ class LGBMModelPipeline:
 
     def get_fit_kwargs(self, X_train):
         # TODO: this needs to change to actual weights
-        return {"model__sample_weight": X_train["monthly"]}
+        #return {"model__sample_weight": X_train["monthly"]}
+        return {"model__sample_weight": X_train["quarter_wm"]}
