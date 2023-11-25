@@ -47,7 +47,7 @@ def main(model_pipeline, submission_timestamp):
         X_raw, y, date_col="date"
     )
     X_train = X_train_raw.drop(columns=["formatted_date", "date", "monthly", "quarter_wm"])
-    X_test = X_test_raw.drop(columns=["formatted_date", "date", "monthly""quarter_wm"])
+    X_test = X_test_raw.drop(columns=["formatted_date", "date", "monthly", "quarter_wm"])
     X = X_raw.drop(columns=["formatted_date", "date", "monthly", "quarter_wm"])
     X_subm = submission_df.drop(columns=["formatted_date", "date", "monthly", "phase", "quarter_wm"])
 
