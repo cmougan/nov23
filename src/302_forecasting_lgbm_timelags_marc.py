@@ -2,11 +2,15 @@
 import pandas as pd
 
 # %%
-train_data = pd.read_parquet("data/201_feateng_train_data.parquet").drop(columns = ['level_0','level_1'])
+train_data = pd.read_parquet("data/202_feateng_train_data.parquet").drop(
+    columns=["level_0", "level_1"]
+)
 print(train_data.isna().sum() / len(train_data))
 
 # %%
-submission_data = pd.read_parquet("data/201_feateng_test_data.parquet").drop(columns = ['level_0','level_1'])
+submission_data = pd.read_parquet("data/202_feateng_test_data.parquet").drop(
+    columns=["level_0", "level_1"]
+)
 print(submission_data.isna().sum() / len(train_data))
 
 # %%
@@ -56,7 +60,7 @@ categorical_feat = [
 
 def transform_data(data, categorical_feat):
     data = add_date_cols(data)
-    X = data.drop(columns=["code", "phase", "date", "monthly"])
+    X = data.drop(columns=["code", "phase"])
     X[categorical_feat] = X[categorical_feat].astype("category")
     return X
 
@@ -65,38 +69,41 @@ y = train_data["phase"]
 X = transform_data(train_data, categorical_feat)
 # %%
 
-lag_feats = [k for k in X.keys() if 'lag_' in k]
-X[lag_feats] = X[lag_feats].fillna(method = 'ffill').astype(float)
+lag_feats = [k for k in X.keys() if "lag_" in k]
+X[lag_feats] = X[lag_feats].fillna(method="ffill").astype(float)
 
 
 # %%
 estimator = LGBMRegressor(categorical_feature=categorical_feat)
-cv = GridSearchCV(
-    estimator,
-    {
-        "n_estimators": [50, 100, 200, 500],
-        "learning_rate": [0.01, 0.001, 0.1],
-        "max_depth": [1, 2, 3, 5],
-        "num_iterations": [1000],
-    },
-    cv=3,
-)
-cv_random = RandomizedSearchCV(
-    estimator,
-    param_distributions={
-        "n_estimators": [50, 100, 200, 500],
-        "learning_rate": [0.01, 0.001, 0.1],
-        "max_depth": [1, 2, 3, 5],
-        "num_iterations": [1000],
-    },
-)
 # %%
-from sklearn.model_selection import cross_val_score
+# from sklearn.model_selection import cross_val_score
 
-score = cross_val_score(estimator, X, y, cv=3)
-print(score)
+# score = cross_val_score(estimator, X, y, cv=3)
+# print(score)
+
+# %%
+from src.utils.validation import train_test_split_temporal
+
+X_tr, y_tr, X_te, y_te = train_test_split_temporal(X, y)
+# %%
+estimator.fit(X_tr.drop(columns=["date", "monthly"]), y_tr)
+# %%
+y_pred = estimator.predict(X_tr.drop(columns=["date", "monthly"]))
+y_te_pred = estimator.predict(X_te.drop(columns=["date", "monthly"]))
+
 # %%
 from src.helper.helper import metric, scale_prediction
+
+X_tr["prediction"] = y_pred
+X_te["prediction"] = y_te_pred
+
+X_tr = scale_prediction(X_tr)
+X_te = scale_prediction(X_te)
+
+metric(X_tr)
+metric(X_te)
+
+# %%
 
 estimator.fit(X, y)
 y_pred = estimator.predict(X)
@@ -106,12 +113,12 @@ train_data = scale_prediction(train_data)
 metric(train_data)
 # %%
 X_subm = transform_data(submission_data, categorical_feat)
-X_subm[lag_feats] = X_subm[lag_feats].fillna(method = 'ffill').astype(float)
+X_subm[lag_feats] = X_subm[lag_feats].fillna(method="ffill").astype(float)
 y_pred_sum = estimator.predict(X_subm)
-#%%
-y_pred_sum = np.clip(y_pred_sum,0,np.inf)
 # %%
-submission_data['prediction'] = y_pred_sum
+y_pred_sum = np.clip(y_pred_sum, 0, np.inf)
+# %%
+submission_data["prediction"] = y_pred_sum
 submission_data = scale_prediction(submission_data)
 
 # %%
@@ -119,7 +126,7 @@ submission_template = pd.read_csv("data/submission_template.csv")
 submission_data = submission_data[submission_template.keys()]
 # %%
 # Save Submission
-sub_number = '_lags_v2'
+sub_number = "_lags_v3"
 sub_name = "submission/submission{}.csv".format(sub_number)
 submission_data.to_csv(sub_name, index=False)
 
@@ -132,25 +139,24 @@ submission_data.to_csv(sub_name, index=False)
 #     estimator = lightgbm()
 #     cv = GridSearchCV()
 
-#%%
+# %%
 from sklearn.linear_model import Lasso
 from sklearn.preprocessing import StandardScaler
+
 # %%
-X_non_cat = X.drop(columns = ["ther_area",
-    "main_channel",
-    "brand",
-    "country",
-    "hospital_rate"])
-X_non_cat = X_non_cat.fillna(method = 'ffill').astype(float).fillna(0)
-#%%
+X_non_cat = X.drop(
+    columns=["ther_area", "main_channel", "brand", "country", "hospital_rate"]
+)
+X_non_cat = X_non_cat.fillna(method="ffill").astype(float).fillna(0)
+# %%
 X_non_cat.isna().sum().sum()
 
-#%%
+# %%
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X_non_cat)
 # %%
-lasso = Lasso(alpha = 0.001)
-lasso.fit(X_scaled,y)
+lasso = Lasso(alpha=0.001)
+lasso.fit(X_scaled, y)
 # %%
-print(lasso.coef_,X_non_cat.columns)
+print(lasso.coef_, X_non_cat.columns)
 # %%
