@@ -7,6 +7,7 @@ from sklearn.model_selection import GridSearchCV
 
 from src.helper.helper import check_assert_sum_1, metric, scale_prediction
 from src.model_pipelines.dummy import DummyModelPipeline
+from src.model_pipelines.hist_gbm import HistGradientBoostingModelPipeline
 from src.model_pipelines.lgbm import LGBMModelPipeline
 from src.utils.preprocessing import add_date_cols
 from src.utils.validation import initial_train_test_split_temporal
@@ -14,6 +15,7 @@ from src.utils.validation import initial_train_test_split_temporal
 pipelines = {
     "lgbm": LGBMModelPipeline(),
     "dummy": DummyModelPipeline(),
+    "hist_gbm": HistGradientBoostingModelPipeline(),
 }
 
 
@@ -48,6 +50,11 @@ def main(model_pipeline, submission_timestamp, message, rolling_file_name):
     y = df.phase
     X_raw = df.drop(columns=["phase"])
 
+    if model_pipeline.model_name == "lgbm":
+        for col in ["country", "brand", "main_channel", "ther_area"]:
+            X_raw[col] = X_raw[col].astype("category")
+            submission_df[col] = submission_df[col].astype("category")
+
     # Prepare X_train, X_test, y_train and y_test for ML
     X_train_raw, X_test_raw, y_train, y_test = initial_train_test_split_temporal(
         X_raw, y, date_col="date"
@@ -59,24 +66,12 @@ def main(model_pipeline, submission_timestamp, message, rolling_file_name):
 
     # Get model and grid
     model_pipe = model_pipeline.get_pipeline()
-    pipeline_grid = model_pipeline.get_grid()
     fit_kwargs = model_pipeline.get_fit_kwargs(X_train_raw)
 
-    # Define cv pipeline
-    model_cv = GridSearchCV(
-        model_pipe,
-        param_grid=pipeline_grid,
-        cv=3,
-        scoring="neg_mean_squared_error",
-    )
-
     # train pipeline (use monthly as weights)
-    model_cv.fit(X_train, y_train, **fit_kwargs)
+    model_pipe.fit(X_train, y_train, **fit_kwargs)
 
-    print(f"Best params for {model_pipeline.model_name}: {model_cv.best_params_}")
-    print(f"CV MSE for {model_pipeline.model_name}: {model_cv.best_score_}")
-
-    X_train_raw["prediction"] = model_cv.predict(X_train).clip(0, None)
+    X_train_raw["prediction"] = model_pipe.predict(X_train).clip(0, None)
     mse = mean_squared_error(X_train_raw["prediction"], y_train)
     print(f"Train MSE for {model_pipeline.model_name}: {mse}")
     X_train_pred = scale_prediction(X_train_raw)
@@ -86,7 +81,7 @@ def main(model_pipeline, submission_timestamp, message, rolling_file_name):
 
     print(f"Train metric for {model_pipeline.model_name}: {metric_train}")
 
-    X_test_raw["prediction"] = model_cv.predict(X_test)
+    X_test_raw["prediction"] = model_pipe.predict(X_test)
     mse = mean_squared_error(X_test_raw["prediction"], y_test)
     print(f"Test MSE for {model_pipeline.model_name}: {mse}")
     X_test_pred = scale_prediction(X_test_raw)
@@ -99,7 +94,6 @@ def main(model_pipeline, submission_timestamp, message, rolling_file_name):
 
     # Train model with best params
     fit_kwargs = model_pipeline.get_fit_kwargs(X_raw)
-    model_pipe.set_params(**model_cv.best_params_)
     model_pipe.fit(X, y, **fit_kwargs)
 
     PATH = Path("data")
