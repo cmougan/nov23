@@ -44,7 +44,7 @@ def main(model_pipeline, submission_timestamp):
 
     # Prepare X_train, X_test, y_train and y_test for ML
     X_train_raw, X_test_raw, y_train, y_test = train_test_split_temporal(
-        X_raw, y, date_col="date", date_split="2019-01-01"
+        X_raw, y, date_col="date"
     )
     X_train = X_train_raw.drop(columns=["formatted_date", "date", "monthly"])
     X_test = X_test_raw.drop(columns=["formatted_date", "date", "monthly"])
