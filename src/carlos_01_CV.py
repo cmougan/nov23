@@ -32,7 +32,7 @@ X = df[df.train == 1].drop(["phase"], axis=1)
 y = df[df.train == 1].phase
 # Temporal split
 X_tr, X_te, y_tr, y_te = train_test_split_temporal(
-    X, y, date_col="date", date_split="2021-01-01"
+    X, y, date_col="date", date_split="2021-01-01", filter=True
 )
 
 # %%

@@ -14,6 +14,13 @@ def add_date_cols(df):
     df["month"] = df["date"].dt.month
     df["quarter"] = df["date"].dt.quarter
     df["week"] = df.date.dt.isocalendar().week
+    df["quarter_w"] = np.where(
+        df["quarter"] == 1,
+        1,
+        np.where(df["quarter"] == 2, 0.75, np.where(df["quarter"] == 3, 0.66, 0.5)),
+    )
+    df["quarter_wm"] = df["quarter_w"] * df["monthly"]
+
     return df
 
 
@@ -161,3 +168,76 @@ def add_basic_valid_lag_features_neighbour(df, n_lags_week, n_lags_day, n_lags_m
         df[f"lag_phase_{i}_yr_after"] = df.phase.shift(365 + 7 * i + 1, freq="D")
 
     return df.reset_index()
+
+
+def impute_end_dates(data, threshold_date):
+    if data < pd.Timestamp(threshold_date):
+        return data
+    else:
+        return ""
+
+
+def impute_start_dates(data, threshold_date):
+    if data > pd.Timestamp(threshold_date):
+        return data
+    else:
+        return ""
+
+
+def get_days_sincestart_toend(
+    df: pd.DataFrame, threshold_start="2013-02-01", threshold_end="2022-12-01"
+):
+    """
+    Compute the number of days between the start_date and date
+    Compute the number of days between the end_date and date
+
+    It could give some sense of maturity on the brand. If we have no information on the date of start/end of the brand, we have a nan.
+
+    Parameters:
+    -----------
+    df: pd.DataFrame
+        dataframe with columns brand, country and date
+    threshold_start: str
+        date from which we consider we can ensure the brand has launch from that day (not inclusive)
+    threshold_end: str
+        date from which we consider we can ensure the brand has stopped selling before that day (not inclusive)
+
+    Returns:
+    --------
+    df: pd.DataFrame
+        dataframe with columns brand, country, date, days_since_start, days_until_end
+    """
+
+    start_end_dates = (
+        df.copy()
+        .groupby(["brand", "country"])
+        .agg(
+            start_date=("date", "min"),
+            end_date=("date", "max"),
+        )
+        .reset_index()
+    )
+
+    start_end_dates = start_end_dates.assign(
+        end_date=start_end_dates.end_date.apply(
+            impute_end_dates, threshold_date=threshold_end
+        ),
+        start_date=start_end_dates.start_date.apply(
+            impute_start_dates, threshold_date=threshold_start
+        ),
+    )
+    # Convert to timestamps again
+    start_end_dates = start_end_dates.assign(
+        end_date=lambda x: pd.to_datetime(x.end_date),
+        start_date=lambda x: pd.to_datetime(x.start_date),
+    )
+
+    df = df.merge(start_end_dates, on=["brand", "country"], how="left")
+
+    # Compute the number of days between the start_date ad date
+    df = df.assign(
+        days_since_start=lambda x: (x.date - x.start_date).dt.days,
+        days_until_end=lambda x: (x.end_date - x.date).dt.days,
+    )
+    df.drop(columns=["start_date", "end_date"], inplace=True)
+    return df

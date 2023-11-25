@@ -6,5 +6,8 @@ gitall:
 	git push
 
 update_branch:
+	git checkout main
+	git pull
+	git checkout carlos
 	git fetch
 	git rebase origin/main
