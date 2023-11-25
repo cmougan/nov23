@@ -59,7 +59,7 @@ categorical_feat = [
 
 
 def transform_data(data, categorical_feat):
-    data = add_date_cols(data)
+    data = add_date_cols(data, add_weights=False)
     X = data.drop(columns=["code", "phase"])
     X[categorical_feat] = X[categorical_feat].astype("category")
     return X
@@ -70,7 +70,7 @@ X = transform_data(train_data, categorical_feat)
 # %%
 
 lag_feats = [k for k in X.keys() if "lag_" in k]
-X[lag_feats] = X[lag_feats].fillna(method="ffill").astype(float)
+X[lag_feats] = X[lag_feats].astype(float)
 
 
 # %%
@@ -100,9 +100,11 @@ X_te["prediction"] = y_te_pred
 X_tr = scale_prediction(X_tr)
 X_te = scale_prediction(X_te)
 # %%
-metric(X_tr.join(y_tr))
+X_tr["phase"] = y_tr
+metric(X_tr)
 # %%
-metric(X_te.join(y_te))
+X_te["phase"] = y_te
+metric(X_te)
 
 # %%
 from src.utils.preprocessing import add_basic_lag_features_week
@@ -113,8 +115,9 @@ warnings.simplefilter(action="ignore")
 tqdm.pandas()
 
 
-def rolling_prediction(X, X_tr, y_tr, estimator):
-    total_data_train = X_tr.join(y_tr)
+def rolling_prediction(X, X_tr, y_tr, estimator, use_last_index=False):
+    total_data_train = X_tr.copy()
+    total_data_train["phase"] = y_tr
     total_data_train["code"] = [
         "_".join([str(brand), str(country)])
         for brand, country in zip(
@@ -122,40 +125,54 @@ def rolling_prediction(X, X_tr, y_tr, estimator):
         )
     ]
     train_end = str(total_data_train.date.max().strftime("%Y-%m-%d"))
-
     total_data_test = X.assign(phase=np.nan)
     total_data_test["code"] = [
         "_".join([str(brand), str(country)])
         for brand, country in zip(total_data_test["brand"], total_data_test["country"])
     ]
-    codes_test = total_data_test.code.unique().tolist()
+    codes_test |= total_data_test.code.unique().tolist()
+    min_date = (total_data_test.date.min() - pd.Timedelta(365, "D")).strftime(
+        "%Y-%m-%d"
+    )
+
+    print(total_data_train.shape)
+    total_data_train = total_data_train.query(f'date>="{min_date}"')
+    print(total_data_train.shape)
     total_data = pd.concat([total_data_train, total_data_test])
     total_data = total_data.query("code in @codes_test")
 
     total_data_with_lags = (
-        total_data.groupby("code", as_index=False).apply(
+        total_data.groupby("code", as_index=False).progress_apply(
             lambda x: add_basic_lag_features_week(x, 20, 5, 5)
         )
     ).reset_index()
+
     X = transform_data(
         total_data_with_lags.query(f'date>"{train_end}"'), categorical_feat
     )
-    X[lag_feats] = X[lag_feats].fillna(method="ffill").astype(float)
 
-    last_index = min(np.where(~(X[lag_feats].isna()).sum(axis=1) == 0)[0])
-    for i in range(10):
-        print(last_index)
+    if use_last_index:
+        lag_feats_day = [k for k in X.keys() if "lag_" in k and "_day" in k]
+        X[lag_feats_day].to_csv("debug.csv")
+        last_index = min(np.where(X[lag_feats_day].isna().sum(axis=1) > 15)[0])
+    else:
+        last_index = len(X) + 1
+
+    for i in tqdm(range(3)):
+        print(i, last_index)
         pred = estimator.predict(
             X.drop(columns=["date", "level_0", "level_1"]).iloc[:last_index]
         )
         diff = np.sum(np.abs(total_data_test.phase.iloc[:last_index] - pred))
         pred_series = pd.Series(pred, index=total_data_test.iloc[:last_index].index)
         total_data_test.phase.iloc[:last_index].fillna(pred_series, inplace=True)
+
         print(i, diff, X[lag_feats].isna().sum().sum(), X.shape)
+
         total_data = pd.concat([total_data_train, total_data_test])
         total_data = total_data.query("code in @codes_test")
         total_data_with_lags = (
-            total_data.groupby("code", as_index=False).apply(
+            total_data.groupby("code", as_index=False).progress_apply(
                 lambda x: add_basic_lag_features_week(x, 20, 5, 5)
             )
         ).reset_index()
@@ -164,26 +181,28 @@ def rolling_prediction(X, X_tr, y_tr, estimator):
             total_data_with_lags.query(f'date>"{train_end}"'), categorical_feat
         )
         X[lag_feats] = X[lag_feats].fillna(method="ffill").astype(float)
-        last_index = min(np.where(~(X[lag_feats].isna()).sum(axis=1) == 0)[0])
+        if use_last_index:
+            last_index = min(np.where(X[lag_feats].isna().sum(axis=1) > 20)[0])
+        else:
+            last_index = len(X) + 1
 
-    return total_data_test.phase
+    return pred
 
 
 y_pred_rec = rolling_prediction(
-    X_te.drop(columns=["monthly", "prediction", "sum_pred"]).query(
-        'brand=="ABRRE" and country=="Beleria"'
-    ),
-    X_tr.drop(columns=["monthly", "prediction", "sum_pred"]).query(
-        'brand=="ABRRE" and country=="Beleria"'
-    ),
+    X_te.drop(columns=["prediction", "sum_pred", "monthly"]),
+    X_tr.drop(columns=["prediction", "sum_pred", "monthly"]),
     y_tr,
     estimator,
+    use_last_index=True,
 )
 # %%
 
 X_te["prediction"] = y_pred_rec
 X_te = scale_prediction(X_te)
-metric(X_te.join(y_te))
+# %%
+X_te["phase"] = y_te
+metric(X_te)
 # %%
 estimator.fit(X.drop(columns=["date", "monthly"]), y)
 # %%
@@ -195,7 +214,12 @@ metric(train_data)
 # %%
 X_subm = transform_data(submission_data, categorical_feat)
 X_subm[lag_feats] = X_subm[lag_feats].fillna(method="ffill").astype(float)
-y_pred_sum = estimator.predict(X_subm.drop(columns=["date", "monthly"]))
+y_pred_sum = rolling_prediction(
+    X_subm.drop(columns=["monthly"]),
+    X.drop(columns=["prediction", "sum_pred", "monthly"]),
+    y,
+    estimator,
+)
 # %%
 y_pred_sum = np.clip(y_pred_sum, 0, np.inf)
 # %%
@@ -241,7 +265,9 @@ X_scaled = scaler.fit_transform(X_non_cat)
 lasso = Lasso(alpha=0.001)
 lasso.fit(X_scaled, y)
 # %%
-for i in range(len(lasso.coef_)):
+argsort = np.argsort(abs(lasso.coef_))[::-1]
+# %%
+for i in argsort:
     if lasso.coef_[i] != 0:
         print(lasso.coef_[i], X_non_cat.columns[i])
 # %%

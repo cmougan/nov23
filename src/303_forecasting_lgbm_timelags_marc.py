@@ -59,7 +59,7 @@ categorical_feat = [
 
 
 def transform_data(data, categorical_feat):
-    data = add_date_cols(data)
+    data = add_date_cols(data, add_weights=False)
     X = data.drop(columns=["code", "phase"])
     X[categorical_feat] = X[categorical_feat].astype("category")
     return X
@@ -100,9 +100,11 @@ X_te["prediction"] = y_te_pred
 X_tr = scale_prediction(X_tr)
 X_te = scale_prediction(X_te)
 # %%
-metric(X_tr.join(y_tr))
+X_tr["phase"] = y_tr
+metric(X_tr)
 # %%
-metric(X_te.join(y_te))
+X_te["phase"] = y_te
+metric(X_te)
 
 # %%
 
