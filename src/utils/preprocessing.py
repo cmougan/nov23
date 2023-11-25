@@ -19,7 +19,7 @@ def add_date_cols(df):
         1,
         np.where(df["quarter"] == 2, 0.75, np.where(df["quarter"] == 3, 0.66, 0.5)),
     )
-    df["quarter_wm"] = df["quarter_w"] * df["month"]
+    df["quarter_wm"] = df["quarter_w"] * df["monthly"]
 
     return df
 
