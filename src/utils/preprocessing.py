@@ -2,8 +2,10 @@ import numpy as np
 
 import pandas as pd
 
+from typing import List
 
-def add_date_cols(df, add_weights=True):
+
+def add_date_cols(df):
     """
     Convert date to datetime and add year, month, quarter and week columns
     """
@@ -13,14 +15,20 @@ def add_date_cols(df, add_weights=True):
     df["year"] = df["date"].dt.year
     df["month"] = df["date"].dt.month
     df["quarter"] = df["date"].dt.quarter
-    df["week"] = df.date.dt.day_of_year // 7
+    df["dayweek"] = df["date"].dt.dayofweek
+    df["week"] = df["date"].dt.day_of_year // 7  # df["date"].dt.isocalendar().week
+    df = get_week_inmonth(df)  # Add week in month
+
+    df["Week_day"] = (
+        df.num_week_month.astype(str) + "-" + df.date.dt.dayofweek.astype(str)
+    )
+
     df["quarter_w"] = np.where(
         df["quarter"] == 1,
         1,
         np.where(df["quarter"] == 2, 0.75, np.where(df["quarter"] == 3, 0.66, 0.5)),
     )
-    if add_weights:
-        df["quarter_wm"] = df["quarter_w"] * df["monthly"]
+    df["quarter_wm"] = df["quarter_w"] * df["monthly"]
 
     return df
 
@@ -90,25 +98,6 @@ def add_basic_lag_features(df, n_lags_day, n_lags_month, n_lags_yr):
     return df.reset_index()
 
 
-def add_basic_lag_features_week(df, n_lags_day, n_lags_month, n_lags_week):
-    df["date"] = pd.to_datetime(df["date"])
-    df = df.set_index("date")
-    for i in range(1, n_lags_day + 1):
-        df[f"lag_phase_{i}_days"] = df.phase.shift(i, freq="D")
-
-    for i in range(1, n_lags_month + 1):
-        df[f"lag_phase_{i}_month_exact"] = df.phase.shift(30 * i, freq="D")
-        df[f"lag_phase_{i}_month_before"] = df.phase.shift(30 * i - 1, freq="D")
-        df[f"lag_phase_{i}_month_after"] = df.phase.shift(30 * i + 1, freq="D")
-
-    for i in range(1, n_lags_week + 1):
-        df[f"lag_phase_{i}_week_exact"] = df.phase.shift(7 * i, freq="D")
-        df[f"lag_phase_{i}_week_before"] = df.phase.shift(7 * i - 1, freq="D")
-        df[f"lag_phase_{i}_week_after"] = df.phase.shift(7 * i + 1, freq="D")
-
-    return df.reset_index()
-
-
 def add_basic_valid_lag_features(df, n_lags_day, n_lags_month, n_lags_yr):
     df["date"] = pd.to_datetime(df["date"])
     df = df.set_index("date")
@@ -122,12 +111,31 @@ def add_basic_valid_lag_features(df, n_lags_day, n_lags_month, n_lags_yr):
             .fillna(df.phase.shift(365 + 30 * i - 1, freq="D"))
         )
 
+        # Como hacer el mean
+        # np.nanmean(
+        #     [
+        #         df.phase.shift(365 + 30 * i, freq="D"),
+        #         df.phase.shift(365 + 30 * i + 1, freq="D"),
+        #         df.phase.shift(365 + 30 * i - 1, freq="D"),
+        #     ],
+        #     axis=0,
+        # )
+
     for i in range(1, n_lags_yr + 1):
         df[f"lag_phase_{i}_yr"] = (
             df.phase.shift(365 + 365 * i, freq="D")
             .fillna(df.phase.shift(365 + 365 * i + 1, freq="D"))
             .fillna(df.phase.shift(365 + 365 * i - 1, freq="D"))
         )
+
+        # np.nanmean(
+        #     [
+        #         df.phase.shift(365 + 365 * i, freq="D"),
+        #         df.phase.shift(365 + 365 * i + 1, freq="D"),
+        #         df.phase.shift(365 + 365 * i - 1, freq="D"),
+        #     ],
+        #     axis=0,
+        # )
 
     return df.reset_index()
 
@@ -241,4 +249,58 @@ def get_days_sincestart_toend(
         days_until_end=lambda x: (x.end_date - x.date).dt.days,
     )
     df.drop(columns=["start_date", "end_date"], inplace=True)
+    return df
+
+
+def get_ther_areas_group(df, grouping: List):
+    """
+    Get the ther_areas that are in the group.
+    It can be used with brand, brand and country, etc.
+    """
+    df = df.copy()
+    name = "_".join(grouping)
+    unique_ther_areas = df.groupby(grouping).apply(
+        lambda x: pd.Series(
+            {
+                f"unique_areas_{name}": "-".join(
+                    set(x["ther_area"].dropna().unique().tolist())
+                )
+            }
+        )
+    )
+
+    df = df.merge(unique_ther_areas, on=grouping)
+
+    return df
+
+
+def get_ther_areas_data(df):
+    """
+    Get the ther_areas that are in the group.
+    It can be used with brand, brand and country, etc.
+
+    """
+    df = df.copy()
+    df = get_ther_areas_group(df, ["brand", "country"])
+    df = get_ther_areas_group(df, ["brand"])
+    df = get_ther_areas_group(df, ["country"])
+    return df
+
+
+def get_week_inmonth(df: pd.DataFrame):
+    """
+    Get the week in the month
+    """
+    df = df.copy()
+    tmp = (
+        df.groupby(["year", "month"])
+        .agg(
+            first_week=("week", "min"),
+        )
+        .reset_index()
+    )
+
+    df = df.merge(tmp, on=["year", "month"]).assign(
+        num_week_month=lambda x: x.week - x.first_week
+    )
     return df
