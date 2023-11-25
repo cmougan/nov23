@@ -9,7 +9,7 @@ class LGBMModelPipeline:
         return Pipeline(
             [
                 # ("encoder", TargetEncoder(cols=["main_channel", "ther_area"])),
-                ("model", LGBMRegressor(random_state=42, n_jobs=-1, verbose=0, n_estimators=400)),
+                ("model", LGBMRegressor(random_state=42, n_jobs=-1, verbose=0, n_estimators=500)),
             ]
         )
 
@@ -20,4 +20,4 @@ class LGBMModelPipeline:
 
     def get_fit_kwargs(self, X_train):
         # TODO: this needs to change to actual weights
-        return {"model__sample_weight": X_train["monthly"]}
+        return {"model__sample_weight": X_train["quarter_wm"]}
