@@ -164,4 +164,7 @@ cython_debug/
 .DS_Store
 *.pdf
 *.pptx
+
+
+.vscode/
 data/*
