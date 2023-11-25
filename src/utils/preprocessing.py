@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 
 
-def add_date_cols(df):
+def add_date_cols(df, add_weights=True):
     """
     Convert date to datetime and add year, month, quarter and week columns
     """
@@ -13,13 +13,14 @@ def add_date_cols(df):
     df["year"] = df["date"].dt.year
     df["month"] = df["date"].dt.month
     df["quarter"] = df["date"].dt.quarter
-    df["week"] = df.date.dt.isocalendar().week
+    df["week"] = df.date.dt.day_of_year // 7
     df["quarter_w"] = np.where(
         df["quarter"] == 1,
         1,
         np.where(df["quarter"] == 2, 0.75, np.where(df["quarter"] == 3, 0.66, 0.5)),
     )
-    df["quarter_wm"] = df["quarter_w"] * df["monthly"]
+    if add_weights:
+        df["quarter_wm"] = df["quarter_w"] * df["monthly"]
 
     return df
 
@@ -101,9 +102,9 @@ def add_basic_lag_features_week(df, n_lags_day, n_lags_month, n_lags_week):
         df[f"lag_phase_{i}_month_after"] = df.phase.shift(30 * i + 1, freq="D")
 
     for i in range(1, n_lags_week + 1):
-        df[f"lag_phase_{i}_week_exact"] = df.phase.shift(365 * i, freq="D")
-        df[f"lag_phase_{i}_week_before"] = df.phase.shift(365 * i - 1, freq="D")
-        df[f"lag_phase_{i}_week_after"] = df.phase.shift(365 * i + 1, freq="D")
+        df[f"lag_phase_{i}_week_exact"] = df.phase.shift(7 * i, freq="D")
+        df[f"lag_phase_{i}_week_before"] = df.phase.shift(7 * i - 1, freq="D")
+        df[f"lag_phase_{i}_week_after"] = df.phase.shift(7 * i + 1, freq="D")
 
     return df.reset_index()
 
