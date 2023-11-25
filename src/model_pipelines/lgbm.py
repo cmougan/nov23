@@ -15,7 +15,7 @@ class LGBMModelPipeline:
 
     def get_grid(self):
         return {
-            "model__n_estimators": [50, 100, 200],
+            "model__n_estimators": [50],
         }
 
     def get_fit_kwargs(self, X_train):
