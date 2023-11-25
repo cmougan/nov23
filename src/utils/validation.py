@@ -7,7 +7,7 @@ def train_test_split_temporal(
     X,
     y,
     date_col: str = "date",
-    date_split: str = "2019-01-01",
+    date_split: str = "2021-01-01",
     filter: bool = False,
     also_train: bool = False,
 ):
