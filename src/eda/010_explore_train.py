@@ -8,7 +8,7 @@ train_data = pd.read_parquet("data/train_data.parquet")
 submission_data = pd.read_parquet("data/submission_data.parquet")
 # %%
 train_data
-Ç# %%
+# %%
 train_data.dayweek.value_counts()
 # %%
 submission_data.dayweek.value_counts()

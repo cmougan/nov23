@@ -98,7 +98,7 @@ for n_years in range(1, 6):
             agg_column="phase",
             window_period=f"{n_years}y",
             window_closed="left",
-            window_offset=None,
+            window_offset=f"{-n_years - 1}y",
             fn=fn
         )
 
