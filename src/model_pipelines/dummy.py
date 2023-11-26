@@ -29,7 +29,7 @@ class DummyModelPipeline:
     def get_pipeline(self):
         return Pipeline(
             [
-                ("model", TargetEncoderRegressor(cols=["brand", "country", "wd"], agg_col="concat"))
+                ("model", TargetEncoderRegressor(cols=["brand", "country", "month"], agg_col="concat"))
             ]
         )
 
