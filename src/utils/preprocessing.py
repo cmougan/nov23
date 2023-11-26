@@ -1,8 +1,29 @@
-import numpy as np
+from typing import List
 
+import numpy as np
 import pandas as pd
 
-from typing import List
+
+def initial_add_date_cols(df):
+    """
+    Convert date to datetime and add year, month, quarter and week columns
+    """
+    df["date"] = pd.to_datetime(df["date"])
+
+    # create datetime columns
+    df["year"] = df["date"].dt.year
+    df["month"] = df["date"].dt.month
+    df["quarter"] = df["date"].dt.quarter
+    df["week"] = df.date.dt.isocalendar().week
+    df["quarter_w"] = np.where(
+        df["quarter"] == 1,
+        1,
+        np.where(df["quarter"] == 2, 0.75, np.where(df["quarter"] == 3, 0.66, 0.5)),
+    )
+    df["quarter_wm"] = df["quarter_w"] * df["monthly"]
+
+    return df
+
 
 
 def add_date_cols(df, add_weights=True):
