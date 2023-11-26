@@ -10,18 +10,19 @@ from src.model_pipelines.dummy import DummyModelPipeline
 from src.model_pipelines.hist_gbm import HistGradientBoostingModelPipeline
 from src.model_pipelines.lgbm import LGBMModelPipeline
 from src.utils.preprocessing import initial_add_date_cols
+from src.model_pipelines.catboost import CatBoostModelPipeline
+from src.utils.preprocessing import add_date_cols
 from src.utils.validation import initial_train_test_split_temporal
 
 pipelines = {
     "lgbm": LGBMModelPipeline(),
     "dummy": DummyModelPipeline(),
     "hist_gbm": HistGradientBoostingModelPipeline(),
+    "catboost": CatBoostModelPipeline(),
 }
 
 
-
 def main(model_pipeline, submission_timestamp, message, rolling_file_name):
-
     # Load data
     data_path = Path("data")
     submission_df_raw = pd.read_parquet(data_path / "submission_data.parquet")
@@ -38,20 +39,25 @@ def main(model_pipeline, submission_timestamp, message, rolling_file_name):
 
     all_df = all_df.merge(rolling_df, on=["date", "brand", "country"], how="left")
 
-    submission_df_raw["country_brand"] = submission_df_raw["country"] + submission_df_raw["brand"]
+    submission_df_raw["country_brand"] = (
+        submission_df_raw["country"] + submission_df_raw["brand"]
+    )
     all_df["country_brand"] = all_df["country"] + all_df["brand"]
     all_df = all_df[all_df.country_brand.isin(submission_df_raw.country_brand.unique())]
     all_df = all_df.drop(columns=["country_brand"])
     submission_df_raw = submission_df_raw.drop(columns=["country_brand"])
 
-    df = all_df.query("date < '2022-01-01'")
+    df = all_df.query("(date < '2022-01-01') & (date >= '2020-01-01')")
     submission_df = all_df.query("date >= '2022-01-01'")
 
     y = df.phase
     X_raw = df.drop(columns=["phase"])
 
-    if model_pipeline.model_name == "lgbm":
-        for col in ["country", "brand", "main_channel", "ther_area"]: # Week_day
+    if (model_pipeline.model_name == "lgbm") or (
+        model_pipeline.model_name == "catboost"
+    ):
+        for col in ["country", "brand", "main_channel", "ther_area", "Week_day"]:
+
             X_raw[col] = X_raw[col].astype("category")
             submission_df[col] = submission_df[col].astype("category")
 
@@ -59,10 +65,16 @@ def main(model_pipeline, submission_timestamp, message, rolling_file_name):
     X_train_raw, X_test_raw, y_train, y_test = initial_train_test_split_temporal(
         X_raw, y, date_col="date"
     )
-    X_train = X_train_raw.drop(columns=["formatted_date", "date", "monthly", "quarter_wm"])
-    X_test = X_test_raw.drop(columns=["formatted_date", "date", "monthly", "quarter_wm"])
+    X_train = X_train_raw.drop(
+        columns=["formatted_date", "date", "monthly", "quarter_wm"]
+    )
+    X_test = X_test_raw.drop(
+        columns=["formatted_date", "date", "monthly", "quarter_wm"]
+    )
     X = X_raw.drop(columns=["formatted_date", "date", "monthly", "quarter_wm"])
-    X_subm = submission_df.drop(columns=["formatted_date", "date", "monthly", "phase", "quarter_wm"])
+    X_subm = submission_df.drop(
+        columns=["formatted_date", "date", "monthly", "phase", "quarter_wm"]
+    )
 
     # Get model and grid
     model_pipe = model_pipeline.get_pipeline()
@@ -91,7 +103,6 @@ def main(model_pipeline, submission_timestamp, message, rolling_file_name):
 
     print(f"Test metric for {model_pipeline.model_name}: {metric_test}")
 
-
     # Train model with best params
     fit_kwargs = model_pipeline.get_fit_kwargs(X_raw)
     model_pipe.fit(X, y, **fit_kwargs)
@@ -105,9 +116,9 @@ def main(model_pipeline, submission_timestamp, message, rolling_file_name):
 
     SAVE_PATH = Path("submissions")
     SAVE_PATH.mkdir(exist_ok=True)
-    submission.to_csv(SAVE_PATH / f"submission_{submission_timestamp}_{message}.csv", index=False)
-
-
+    submission.to_csv(
+        SAVE_PATH / f"submission_{submission_timestamp}_{message}.csv", index=False
+    )
 
 
 def parse_args():
@@ -115,21 +126,33 @@ def parse_args():
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--model", type=str, default="lgbm", help="Model to train", choices=pipelines.keys()
+        "--model",
+        type=str,
+        default="lgbm",
+        help="Model to train",
+        choices=pipelines.keys(),
     )
     parser.add_argument(
         "--message", type=str, default="", help="Message to add to submission file name"
     )
     parser.add_argument(
-        "--rolling-file-name", type=str, default="rolling_features_less_aggs.parquet",
-        help="File name of rolling features to use"
+        "--rolling-file-name",
+        type=str,
+        default="rolling_features_less_aggs.parquet",
+        help="File name of rolling features to use",
     )
 
     return parser.parse_args()
+
 
 if __name__ == "__main__":
     args = parse_args()
     now = datetime.now()
     message = args.message
     rolling_file_name = args.rolling_file_name
-    main(pipelines[args.model], now.strftime("%Y-%m-%d_%H-%M-%S"), message, rolling_file_name)
+    main(
+        pipelines[args.model],
+        now.strftime("%Y-%m-%d_%H-%M-%S"),
+        message,
+        rolling_file_name,
+    )
