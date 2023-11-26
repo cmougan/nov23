@@ -10,14 +10,19 @@ from src.model_pipelines.dummy import DummyModelPipeline
 from src.model_pipelines.hist_gbm import HistGradientBoostingModelPipeline
 from src.model_pipelines.lgbm import LGBMModelPipeline
 from src.model_pipelines.catboost import CatBoostModelPipeline
+from src.model_pipelines.xgboost import XGBModelPipeline
 from src.utils.preprocessing import add_date_cols
 from src.utils.validation import initial_train_test_split_temporal
+
+import shap
+import matplotlib.pyplot as plt
 
 pipelines = {
     "lgbm": LGBMModelPipeline(),
     "dummy": DummyModelPipeline(),
     "hist_gbm": HistGradientBoostingModelPipeline(),
     "catboost": CatBoostModelPipeline(),
+    "xgboost": XGBModelPipeline(),
 }
 
 
@@ -46,7 +51,7 @@ def main(model_pipeline, submission_timestamp, message, rolling_file_name):
     all_df = all_df.drop(columns=["country_brand"])
     submission_df_raw = submission_df_raw.drop(columns=["country_brand"])
 
-    df = all_df.query("(date < '2022-01-01') & (date >= '2020-01-01')")
+    df = all_df.query("(date < '2022-01-01')")  # & (date >= '2020-01-01')
     submission_df = all_df.query("date >= '2022-01-01'")
 
     y = df.phase
@@ -117,6 +122,15 @@ def main(model_pipeline, submission_timestamp, message, rolling_file_name):
     submission.to_csv(
         SAVE_PATH / f"submission_{submission_timestamp}_{message}.csv", index=False
     )
+
+    # Explain model
+    explainer = shap.TreeExplainer(model_pipe.named_steps["model"])
+    # Pipe transform data
+    X_xai = X_test.sample(1000)
+    shap_values = explainer.shap_values(X_xai)
+    # Save image
+    shap.summary_plot(shap_values, X_xai, plot_type="bar", show=False)
+    plt.savefig(f"shap_summary_plot_{model_pipeline.model_name}_{message}.png")
 
 
 def parse_args():
