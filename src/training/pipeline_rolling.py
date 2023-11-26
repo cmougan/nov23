@@ -46,7 +46,7 @@ def main(model_pipeline, submission_timestamp, message, rolling_file_name):
     all_df = all_df.drop(columns=["country_brand"])
     submission_df_raw = submission_df_raw.drop(columns=["country_brand"])
 
-    df = all_df.query("date < '2022-01-01'")
+    df = all_df.query("(date < '2022-01-01') & (date >= '2020-01-01')")
     submission_df = all_df.query("date >= '2022-01-01'")
 
     y = df.phase
@@ -55,7 +55,7 @@ def main(model_pipeline, submission_timestamp, message, rolling_file_name):
     if (model_pipeline.model_name == "lgbm") or (
         model_pipeline.model_name == "catboost"
     ):
-        for col in ["country", "brand", "main_channel", "ther_area"]:
+        for col in ["country", "brand", "main_channel", "ther_area", "Week_day"]:
             X_raw[col] = X_raw[col].astype("category")
             submission_df[col] = submission_df[col].astype("category")
 
