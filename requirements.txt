@@ -12,3 +12,7 @@ xgboost
 tqdm
 polars
 sklego
+plotnine
+streamlit
+scikit-misc
+plotly
