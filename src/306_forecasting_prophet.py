@@ -1,11 +1,11 @@
 #%%
 import pandas as pd
-from utils.validation import initial_train_test_split_temporal
+from src.utils.validation import initial_train_test_split_temporal
 from prophet import Prophet
 from tqdm import tqdm
 import numpy as np
-from helper.helper import metric, scale_prediction
-from helper.helper import add_date_cols
+from src.helper.helper import metric, scale_prediction
+from src.helper.helper import add_date_cols
 # %%
 train_data = pd.read_parquet("data/train_data.parquet")
 print(train_data.isna().sum() / len(train_data))
@@ -37,20 +37,27 @@ submission_data = submission_data[keep_cols].rename(columns = {'date':'ds'})
 #%%
 predictions_tr = {'code':[],
                'prediction':[],
+               'prediction_lower':[],
+               'prediction_upper':[],
                'date':[]}
 predictions_te = {'code':[],
                'prediction':[],
+               'prediction_lower':[],
+               'prediction_upper':[],
                'date':[]}
 predictions = {'code':[],
                'prediction':[],
+               'prediction_lower':[],
+               'prediction_upper':[],
                'date':[]}
 
 def format_df_for_prophet(df):
     df = df.set_index('ds')
     idx = pd.date_range(df.index.min(), df.index.max())
     df = df.reindex(idx)
+    df['exo_non_ex_ampl'] = df['wd'].isna().rolling(window = 7).median()
     df['exo_non_ex'] = df['wd'].isna()
-    df.fillna(0,inplace = True)
+    df.fillna(df.median(),inplace = True)
     df = df.reset_index().rename(columns = {'index':'ds'})
     return df
 #%%%
@@ -61,7 +68,7 @@ def format_df_for_prophet(df):
 #  'changepoint_range': 0.95,
 #  'n_changepoints': 25}
 for code,tmp_df in tqdm(train_data.groupby('code',as_index = False)):
-    tmp_df = format_df_for_prophet(tmp_df)
+    tmp_df = format_df_for_prophet(tmp_df.drop(columns ='code'))
     X = tmp_df
     y = tmp_df
     X_tr, X_te, _, _ = initial_train_test_split_temporal(X, y,date_col = 'ds')
@@ -69,16 +76,19 @@ for code,tmp_df in tqdm(train_data.groupby('code',as_index = False)):
                     weekly_seasonality=True,
                     yearly_seasonality=True) 
     model.fit(X_tr)
-    predictions_train = model.predict(X_tr)[['yhat','ds']]
-    predictions_test = model.predict(X_te)[['yhat','ds']]
+    predictions_train = model.predict(X_tr)
+    predictions_test = model.predict(X_te)
     
     model = Prophet(daily_seasonality=False,
                     weekly_seasonality=True,
                     yearly_seasonality=True)
     model.fit(X)
+    #Regenerar para pillar las exogenas
+    predictions_train = model.predict(X_tr)
+    predictions_test = model.predict(X_te)
     tmp_sumb = submission_data.query(f'code=="{code}"')
-    tmp_sumb = format_df_for_prophet(tmp_sumb)
-    prediction_subm = model.predict(tmp_sumb)[['yhat','ds']]
+    tmp_sumb = format_df_for_prophet(tmp_sumb.drop(columns ='code'))
+    prediction_subm = model.predict(tmp_sumb)
     
     predictions_tr['code']+=[code]*len(X_tr)
     predictions_te['code']+=[code]*len(X_te)
@@ -89,6 +99,15 @@ for code,tmp_df in tqdm(train_data.groupby('code',as_index = False)):
     predictions_te['prediction']+=np.clip(0,predictions_test.yhat,np.inf).tolist()
     predictions['prediction']+=np.clip(0,prediction_subm.yhat,np.inf).tolist()
     
+    predictions_tr['prediction_lower']+=np.clip(0,predictions_train.yhat_lower,np.inf).tolist()
+    predictions_te['prediction_lower']+=np.clip(0,predictions_test.yhat_lower,np.inf).tolist()
+    predictions['prediction_lower']+=np.clip(0,prediction_subm.yhat_lower,np.inf).tolist()
+    
+    
+    predictions_tr['prediction_upper']+=np.clip(0,predictions_train.yhat_upper,np.inf).tolist()
+    predictions_te['prediction_upper']+=np.clip(0,predictions_test.yhat_upper,np.inf).tolist()
+    predictions['prediction_upper']+=np.clip(0,prediction_subm.yhat_upper,np.inf).tolist()
+    
     predictions_tr['date']+=predictions_train.ds.tolist()
     predictions_te['date']+=predictions_test.ds.tolist()
     predictions['date']+=prediction_subm.ds.tolist()
@@ -98,12 +117,19 @@ predictions_tr =pd.DataFrame(predictions_tr)
 predictions_te = pd.DataFrame(predictions_te)
 predictions = pd.DataFrame(predictions)
 #%%
-predictions.to_csv('predictions_prophet.csv')
-predictions_tr.to_csv('predictions_prophet_tr.csv')
-predictions_te.to_csv('predictions_prophet_te.csv')
+predictions.to_csv('predictions_prophet_exogenous.csv')
+predictions_tr.to_csv('predictions_prophet_tr_exogenous.csv')
+predictions_te.to_csv('predictions_prophet_te_exogenous.csv')
 
 #%%
-
+print ('done')
+import sys
+sys.exit()
+#%%
+predictions  =pd.read_csv('predictions_prophet.csv')
+predictions_tr=pd.read_csv('predictions_prophet_tr.csv')
+predictions_te=pd.read_csv('predictions_prophet_te.csv')
+#%%
 train_data = pd.read_parquet("data/train_data.parquet")
 print(train_data.isna().sum() / len(train_data))
 
@@ -135,7 +161,7 @@ print(f'Unique brands in submission: {submission_data["brand"].nunique()}')
 print(f'Unique countries in submission: {submission_data["country"].nunique()}')
 print(f'Unique tuples in submission: {submission_data["code"].nunique()}')
 # %%
-train_data = train_data.query('code in @unique_codes_test')
+train_data = train_data.query('code in @unique_codes_test and date>"2017-01-01"')
 
 y = train_data["phase"]
 X = train_data.copy()
@@ -143,7 +169,10 @@ X = train_data.copy()
 
 
 X_tr, X_te, y_tr, y_te = initial_train_test_split_temporal(X, y)
-
+#%%
+predictions_tr['date'] = pd.to_datetime(predictions_tr['date'])
+predictions_te['date'] = pd.to_datetime(predictions_te['date'])
+        
 #%%
 X_tr = X_tr.merge(predictions_tr,on = ['code','date'],how = 'inner')
 X_te = X_te.merge(predictions_te,on = ['code','date'],how = 'inner')
@@ -158,6 +187,9 @@ X_te = scale_prediction(X_te)
 #%%
 X_te.loc[X_te["sum_pred"]==0,'prediction'] = 1
 X_te = scale_prediction(X_te)
+#%%
+X_tr.loc[X_tr["sum_pred"]==0,'prediction'] = 1
+X_tr = scale_prediction(X_tr)
 #%%
 metric(X_tr)
 # %%
