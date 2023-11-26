@@ -2,6 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+from sklearn.calibration import cross_val_predict
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import GridSearchCV
 
@@ -38,6 +39,7 @@ def main(model_pipeline, submission_timestamp, message, rolling_file_name):
 
     all_df = all_df.merge(rolling_df, on=["date", "brand", "country"], how="left")
 
+    # filter months from submission
     submission_df_raw["country_brand"] = submission_df_raw["country"] + submission_df_raw["brand"]
     all_df["country_brand"] = all_df["country"] + all_df["brand"]
     all_df = all_df[all_df.country_brand.isin(submission_df_raw.country_brand.unique())]
@@ -50,8 +52,9 @@ def main(model_pipeline, submission_timestamp, message, rolling_file_name):
     y = df.phase
     X_raw = df.drop(columns=["phase"])
 
+    # encode categorical features
     if model_pipeline.model_name == "lgbm":
-        for col in ["country", "brand", "main_channel", "ther_area"]: # Week_day
+        for col in ["country", "brand", "main_channel", "ther_area"]: # , "Week_day"
             X_raw[col] = X_raw[col].astype("category")
             submission_df[col] = submission_df[col].astype("category")
 
@@ -59,19 +62,30 @@ def main(model_pipeline, submission_timestamp, message, rolling_file_name):
     X_train_raw, X_test_raw, y_train, y_test = initial_train_test_split_temporal(
         X_raw, y, date_col="date"
     )
-    X_train = X_train_raw.drop(columns=["formatted_date", "date", "monthly", "quarter_wm"])
-    X_test = X_test_raw.drop(columns=["formatted_date", "date", "monthly", "quarter_wm"])
-    X = X_raw.drop(columns=["formatted_date", "date", "monthly", "quarter_wm"])
-    X_subm = submission_df.drop(columns=["formatted_date", "date", "monthly", "phase", "quarter_wm"])
+    cols2drop = ["formatted_date", "date", "monthly", "quarter_wm"]
+    X_train = X_train_raw.drop(columns=cols2drop)
+    X_test = X_test_raw.drop(columns=cols2drop)
+    X = X_raw.drop(columns=cols2drop)
+    X_subm = submission_df.drop(columns=cols2drop + ["phase"])
 
-    # Get model and grid
+    # prepare train pipeline (use quarter_wm as weights)
     model_pipe = model_pipeline.get_pipeline()
     fit_kwargs = model_pipeline.get_fit_kwargs(X_train_raw)
 
-    # train pipeline (use monthly as weights)
-    model_pipe.fit(X_train, y_train, **fit_kwargs)
+    # add dummy model prediction as a relative offset
+    dummy_pipe = DummyModelPipeline().get_pipeline()
+    dummy_predictions = cross_val_predict(dummy_pipe, X_train, y_train, cv=3).clip(0.001, None)
+    y_train_transformed = (y_train - dummy_predictions) / dummy_predictions
 
-    X_train_raw["prediction"] = model_pipe.predict(X_train).clip(0, None)
+    # train model
+    dummy_pipe.fit(X_train, y_train)
+    model_pipe.fit(X_train, y_train_transformed, **fit_kwargs)
+
+    # train errors
+    dummy_predictions = dummy_pipe.predict(X_train).clip(0.001, None)
+    X_train_raw["prediction"] = (
+        model_pipe.predict(X_train) * (dummy_predictions + 1)
+    ).clip(0, None)
     mse = mean_squared_error(X_train_raw["prediction"], y_train)
     print(f"Train MSE for {model_pipeline.model_name}: {mse}")
     X_train_pred = scale_prediction(X_train_raw)
@@ -81,7 +95,11 @@ def main(model_pipeline, submission_timestamp, message, rolling_file_name):
 
     print(f"Train metric for {model_pipeline.model_name}: {metric_train}")
 
-    X_test_raw["prediction"] = model_pipe.predict(X_test)
+    # test errors
+    X_test_raw["prediction"] = (
+        model_pipe.predict(X_test)
+        + dummy_pipe.predict(X_test)
+    ).clip(0, None)
     mse = mean_squared_error(X_test_raw["prediction"], y_test)
     print(f"Test MSE for {model_pipeline.model_name}: {mse}")
     X_test_pred = scale_prediction(X_test_raw)
@@ -91,13 +109,24 @@ def main(model_pipeline, submission_timestamp, message, rolling_file_name):
 
     print(f"Test metric for {model_pipeline.model_name}: {metric_test}")
 
-
     # Train model with best params
     fit_kwargs = model_pipeline.get_fit_kwargs(X_raw)
-    model_pipe.fit(X, y, **fit_kwargs)
+    
+    # add dummy model prediction as an offset
+    dummy_pipe = DummyModelPipeline().get_pipeline()
+    dummy_predictions = cross_val_predict(dummy_pipe, X, y, cv=3)
+    y_transformed = (y - dummy_predictions) / dummy_predictions
 
+    # train model
+    dummy_pipe.fit(X, y)
+    model_pipe.fit(X, y_transformed, **fit_kwargs)
+
+    # Create submission
     PATH = Path("data")
-    submission_df["prediction"] = model_pipe.predict(X_subm).clip(0, None)
+    submission_df["prediction"] = (
+        model_pipe.predict(X_subm)
+        * (dummy_pipe.predict(X_subm).clip(0.001, None) + 1)
+    ).clip(0, None)
     submission_df = scale_prediction(submission_df)
     check_assert_sum_1(submission_df)
     submission = pd.read_csv(PATH / "submission_template.csv")
