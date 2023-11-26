@@ -8,7 +8,7 @@ from src.utils.preprocessing import add_date_cols
 from src.utils.validation import initial_train_test_split_temporal
 import shap
 import matplotlib.pyplot as plt
-
+from src.utils.transformer import DropCols, GetNumerical
 
 cols_keep = [
     "bc_phase_mean_1y_wd",
@@ -35,21 +35,41 @@ cols_keep = [
 
 # %%
 # Load data
-data_path = Path("data")
-submission_df_raw = pd.read_parquet(data_path / "submission_data.parquet")
-train_df = pd.read_parquet(data_path / "train_data.parquet")
+train_data = pd.read_parquet("data/train_data.parquet")
+print(train_data.isna().sum() / len(train_data))
 
-all_df = pd.concat([train_df, submission_df_raw])
+# %%
+submission_data = pd.read_parquet("data/submission_data.parquet")
+print(submission_data.isna().sum() / len(train_data))
+
+# %%
+split_feats = ["brand", "country"]
+train_data["code"] = [
+    "_".join([str(brand), str(country)])
+    for brand, country in zip(train_data["brand"], train_data["country"])
+]
+submission_data["code"] = [
+    "_".join([str(brand), str(country)])
+    for brand, country in zip(submission_data["brand"], submission_data["country"])
+]
+#%%
+unique_codes_test = submission_data.code.unique().tolist()
+train_data = train_data.query('code in @unique_codes_test and date>"2017-01-01"')
+# %%
+
+all_df = pd.concat([train_data, submission_data])
 
 all_df = all_df.assign(
     main_channel=lambda x: x["main_channel"].astype(str).fillna("unknown"),
     ther_area=lambda x: x["ther_area"].astype(str).fillna("unknown"),
 ).pipe(add_date_cols)
 
-rolling_df = pd.read_parquet(data_path / "rolling_features_less_aggs.parquet")
+rolling_df = pd.read_parquet("data/rolling_features_less_aggs.parquet")
 
-all_df = all_df.merge(rolling_df, on=["date", "brand", "country"], how="left")#[cols_keep]
-#all_df = all_df.query("date > '2020-01-01'")
+all_df = all_df.merge(
+    rolling_df, on=["date", "brand", "country"], how="left"
+)  # [cols_keep]
+# all_df = all_df.query("date > '2020-01-01'")
 df = all_df.query("date < '2022-01-01'")
 
 submission_df = all_df.query("date >= '2022-01-01'")[cols_keep]
@@ -79,8 +99,11 @@ model1 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
+            TargetEncoder(
+                cols=["brand", "country", "main_channel", "ther_area", "Week_day"]
+            ),
         ),
+        ("get_numerical", GetNumerical()),
         (
             "model",
             LGBMRegressor(random_state=42, n_jobs=-1, verbose=0, n_estimators=100),
@@ -91,8 +114,11 @@ model2 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
+            TargetEncoder(
+                cols=["brand", "country", "main_channel", "ther_area", "Week_day"]
+            ),
         ),
+        ("get_numerical", GetNumerical()),
         (
             "model",
             LGBMRegressor(random_state=42, n_jobs=-1, verbose=0, n_estimators=100),
@@ -103,8 +129,11 @@ model3 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
+            TargetEncoder(
+                cols=["brand", "country", "main_channel", "ther_area", "Week_day"]
+            ),
         ),
+        ("get_numerical", GetNumerical()),
         (
             "model",
             LGBMRegressor(random_state=42, n_jobs=-1, verbose=0, n_estimators=100),
@@ -115,8 +144,11 @@ model4 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
+            TargetEncoder(
+                cols=["brand", "country", "main_channel", "ther_area", "Week_day"]
+            ),
         ),
+        ("get_numerical", GetNumerical()),
         (
             "model",
             LGBMRegressor(random_state=42, n_jobs=-1, verbose=0, n_estimators=100),
@@ -127,8 +159,11 @@ model5 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
+            TargetEncoder(
+                cols=["brand", "country", "main_channel", "ther_area", "Week_day"]
+            ),
         ),
+        ("get_numerical", GetNumerical()),
         (
             "model",
             LGBMRegressor(random_state=42, n_jobs=-1, verbose=0, n_estimators=100),
@@ -139,8 +174,11 @@ model6 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
+            TargetEncoder(
+                cols=["brand", "country", "main_channel", "ther_area", "Week_day"]
+            ),
         ),
+        ("get_numerical", GetNumerical()),
         (
             "model",
             LGBMRegressor(random_state=42, n_jobs=-1, verbose=0, n_estimators=100),
@@ -151,8 +189,11 @@ model7 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
+            TargetEncoder(
+                cols=["brand", "country", "main_channel", "ther_area", "Week_day"]
+            ),
         ),
+        ("get_numerical", GetNumerical()),
         (
             "model",
             LGBMRegressor(random_state=42, n_jobs=-1, verbose=0, n_estimators=100),
@@ -163,8 +204,11 @@ model8 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
+            TargetEncoder(
+                cols=["brand", "country", "main_channel", "ther_area", "Week_day"]
+            ),
         ),
+        ("get_numerical", GetNumerical()),
         (
             "model",
             LGBMRegressor(random_state=42, n_jobs=-1, verbose=0, n_estimators=100),
@@ -175,8 +219,11 @@ model9 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
+            TargetEncoder(
+                cols=["brand", "country", "main_channel", "ther_area", "Week_day"]
+            ),
         ),
+        ("get_numerical", GetNumerical()),
         (
             "model",
             LGBMRegressor(random_state=42, n_jobs=-1, verbose=0, n_estimators=100),
@@ -187,8 +234,11 @@ model10 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
+            TargetEncoder(
+                cols=["brand", "country", "main_channel", "ther_area", "Week_day"]
+            ),
         ),
+        ("get_numerical", GetNumerical()),
         (
             "model",
             LGBMRegressor(random_state=42, n_jobs=-1, verbose=0, n_estimators=100),
@@ -199,8 +249,11 @@ model11 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
+            TargetEncoder(
+                cols=["brand", "country", "main_channel", "ther_area", "Week_day"]
+            ),
         ),
+        ("get_numerical", GetNumerical()),
         (
             "model",
             LGBMRegressor(random_state=42, n_jobs=-1, verbose=0, n_estimators=100),
@@ -211,8 +264,11 @@ model12 = Pipeline(
     [
         (
             "encoder",
-            TargetEncoder(cols=["brand", "country", "main_channel", "ther_area", "Week_day"]),
+            TargetEncoder(
+                cols=["brand", "country", "main_channel", "ther_area", "Week_day"]
+            ),
         ),
+        ("get_numerical", GetNumerical()),
         (
             "model",
             LGBMRegressor(random_state=42, n_jobs=-1, verbose=0, n_estimators=100),
