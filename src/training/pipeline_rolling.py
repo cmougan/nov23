@@ -58,11 +58,12 @@ def main(model_pipeline, submission_timestamp, message, rolling_file_name):
     y = df.phase
     X_raw = df.drop(columns=["phase"])
 
-    if (model_pipeline.model_name == "lgbm") or (
-        model_pipeline.model_name == "catboost"
+    if (
+        (model_pipeline.model_name == "lgbm")
+        or (model_pipeline.model_name == "catboost")
+        or (model_pipeline.model_name == "xgboost")
     ):
-        for col in ["country", "brand", "main_channel", "ther_area", "Week_day"]:
-
+        for col in ["country", "brand", "main_channel", "ther_area"]:
             X_raw[col] = X_raw[col].astype("category")
             submission_df[col] = submission_df[col].astype("category")
 

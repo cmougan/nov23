@@ -1,25 +1,20 @@
-from catboost import CatBoostRegressor
+from xgboost import XGBRegressor
 from sklearn.pipeline import Pipeline
 
 
-class CatBoostModelPipeline:
-    model_name: str = "catboost"
+class XGBModelPipeline:
+    model_name: str = "xgboost"
 
     def get_pipeline(self):
         return Pipeline(
             [
                 (
                     "model",
-                    CatBoostRegressor(
+                    XGBRegressor(
                         random_state=42,
-                        num_trees=500,
-                        thread_count=-1,
-                        cat_features=[
-                            "brand",
-                            "country",
-                            "main_channel",
-                            "ther_area",
-                        ],
+                        n_estimators=200,
+                        n_jobs=-1,
+                        enable_categorical=True,
                     ),
                 ),
             ]
